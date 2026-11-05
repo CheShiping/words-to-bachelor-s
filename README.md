@@ -57,6 +57,32 @@ $env:NEXT_PUBLIC_BASE_PATH = "/words-in-bloom"
 npm run build
 ```
 
+### GitHub Pages
+
+仓库已内置 GitHub Actions 工作流 `.github/workflows/deploy.yml`：推送到 `main` 分支即自动构建并发布。
+
+首次部署前，在仓库页面 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**（只选一次，之后无需再改）。
+
+工作流会自动判断部署路径：
+
+- 项目页 `https://<user>.github.io/<repo>/`：自动设置 `NEXT_PUBLIC_BASE_PATH=/<repo>`；
+- 用户页 `https://<user>.github.io/`：basePath 为空。
+
+同时会生成 `out/.nojekyll`，避免 GitHub Pages 的 Jekyll 处理掉 `_next/` 目录。
+
+本地想复现线上效果：
+
+```powershell
+$env:NEXT_PUBLIC_BASE_PATH = "/words-to-bachelor-s"
+npm run build
+```
+
+构建后 `out/` 需部署到该子路径下才能正常访问（资源引用带前缀）。改完记得清除该环境变量，否则本地根路径预览会 404：
+
+```powershell
+Remove-Item Env:NEXT_PUBLIC_BASE_PATH
+```
+
 ## 更新单词目录
 
 单词数据由 `public/data/catalog.json` 提供。项目包含 Markdown 转换脚本 `scripts/build_catalog.py`；如需从词表原文重新生成目录，请确保已安装 Python 3，并准备好 `docs/2027专升本零基础3500词汇.md`：
