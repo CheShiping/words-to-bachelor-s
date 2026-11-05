@@ -302,6 +302,7 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
       const el = dragEl();
       if (!el) return;
       const damp = dx * 0.55;
+      el.classList.add("has-offset");
       el.style.setProperty("--swipe-x", `${damp.toFixed(1)}px`);
       el.style.setProperty("--swipe-rot", `${(damp * 0.03).toFixed(2)}deg`);
       el.style.setProperty("--swipe-o", String(Math.max(0.45, 1 - Math.abs(dx) / 1100)));
@@ -318,6 +319,7 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
       const el = dragEl();
       if (el) {
         el.classList.remove("is-swiping");
+        el.classList.remove("has-offset");
         el.style.removeProperty("--swipe-x");
         el.style.removeProperty("--swipe-rot");
         el.style.removeProperty("--swipe-o");
