@@ -19,6 +19,7 @@
 - React 19
 - GSAP
 - 单词目录：`public/data/catalog.json`
+- 词表原文：`docs/2027专升本零基础3500词汇.md`
 
 ## 本地运行
 
@@ -58,16 +59,16 @@ npm run build
 
 ## 更新单词目录
 
-单词数据由 `public/data/catalog.json` 提供。项目包含 Markdown 转换脚本 `scripts/build_catalog.py`；如需从词表原文重新生成目录，请确保已安装 Python 3，并准备好仓库根目录下的 `2027专升本零基础3500词汇.md`：
+单词数据由 `public/data/catalog.json` 提供。项目包含 Markdown 转换脚本 `scripts/build_catalog.py`；如需从词表原文重新生成目录，请确保已安装 Python 3，并准备好 `docs/2027专升本零基础3500词汇.md`：
 
 ```bash
 npm run catalog
 ```
 
-也可以直接调用脚本并指定输入、输出路径：
+也可以直接调用脚本并指定输入、输出路径（省略输入路径时脚本会在仓库内自动查找词表）：
 
 ```bash
-python scripts/build_catalog.py "2027专升本零基础3500词汇.md" public/data/catalog.json
+python scripts/build_catalog.py "docs/2027专升本零基础3500词汇.md" public/data/catalog.json
 ```
 
 脚本会解析原书中的「第 N 组」分组、单词、音标、词性与释义，自动完成以下处理：

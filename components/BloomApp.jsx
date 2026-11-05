@@ -28,6 +28,12 @@ const STATUS_LABEL = { new: "未学", learning: "学习中", review: "待复习"
 
 /* ---------- 小工具 ---------- */
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+// 音标展示：原表里部分音标自带结尾的 "/"（如 dinosaur），避免出现双斜杠
+const phoneticOf = (w) => {
+  const p = (w && w.phonetic) || "";
+  if (!p) return "";
+  return p.startsWith("/") ? p : `/${p}/`;
+};
 const shuffleWith = (seed) => {
   let t = seed >>> 0;
   return () => {
@@ -1429,11 +1435,12 @@ function LibraryPage({ app }) {
                     {w.favorite ? "♥" : "♡"}
                   </button>
                 </header>
-                {w.phonetic ? <p className="phonetic">/{w.phonetic}/</p> : null}
+                {w.phonetic ? <p className="phonetic">{phoneticOf(w)}</p> : null}
                 <p className="meaning">{w.meaning}</p>
                 <div className="badges">
                   <span className="badge">{w.category}</span>
                   <span className="badge collection">{w.collectionTitle}</span>
+                  <span className="badge num">#{w.number}</span>
                   <span className={`badge s-${w.status}`}>{STATUS_LABEL[w.status]}</span>
                 </div>
               </article>
@@ -1529,9 +1536,12 @@ function StudyPage({ app, studyCardRef }) {
         </button>
         {word && (
           <div className="study-card glass" key={word.id}>
-            <span className="badge">{word.category}</span>
+            <div className="badges">
+              <span className="badge">{word.category}</span>
+              <span className="badge num">#{word.number}</span>
+            </div>
             <h2 className="study-word">{word.word}</h2>
-            {word.phonetic ? <p className="phonetic">/{word.phonetic}/</p> : null}
+            {word.phonetic ? <p className="phonetic">{phoneticOf(word)}</p> : null}
             <p className="study-meaning">{word.meaning}</p>
             <div className="study-actions">
               <button className={`pill ${word.status === "learning" ? "on" : ""}`} onClick={() => updateWordStatus(word.id, "learning")}>
@@ -1628,9 +1638,12 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
               aria-label="翻转卡片"
             >
               <div className="face front glass">
-                <span className="badge">{flashWord.category}</span>
+                <div className="badges">
+                  <span className="badge">{flashWord.category}</span>
+                  <span className="badge num">#{flashWord.number}</span>
+                </div>
                 <h2 className="flip-word">{flashWord.word}</h2>
-                {flashWord.phonetic ? <p className="phonetic">/{flashWord.phonetic}/</p> : null}
+                {flashWord.phonetic ? <p className="phonetic">{phoneticOf(flashWord)}</p> : null}
                 <p className="flip-tip">点击或按空格翻面</p>
               </div>
               <div className="face back glass">
@@ -1841,11 +1854,12 @@ function FavoritesPage({ app }) {
                     ♥
                   </button>
                 </header>
-                {w.phonetic ? <p className="phonetic">/{w.phonetic}/</p> : null}
+                {w.phonetic ? <p className="phonetic">{phoneticOf(w)}</p> : null}
                 <p className="meaning">{w.meaning}</p>
                 <div className="badges">
                   <span className="badge">{w.category}</span>
                   <span className="badge collection">{w.collectionTitle}</span>
+                  <span className="badge num">#{w.number}</span>
                   <span className={`badge s-${w.status}`}>{STATUS_LABEL[w.status]}</span>
                 </div>
               </article>

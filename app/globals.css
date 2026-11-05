@@ -922,6 +922,12 @@ select.field {
   background: var(--gold-soft);
   color: #8d6c44;
 }
+.badge.num {
+  background: transparent;
+  color: #b39aa1;
+  font-variant-numeric: tabular-nums;
+  padding-left: 0;
+}
 .badge.s-new { background: #eceae6; color: #8f8789; }
 .badge.s-learning { background: #e8eef0; color: #5f7d8c; }
 .badge.s-review { background: var(--gold-soft); color: #8d6c44; }

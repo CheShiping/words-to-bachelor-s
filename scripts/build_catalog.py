@@ -1,13 +1,41 @@
 # -*- coding: utf-8 -*-
 """将《2027专升本零基础3500词汇.md》转换为词间日和的 catalog.json。
 
-用法: python scripts/build_catalog.py <markdown路径> <输出json路径>
+用法:
+    python scripts/build_catalog.py [markdown路径] [输出json路径]
+
+markdown 路径省略时，会按 DEFAULT_SRC_CANDIDATES 的顺序在仓库内自动定位词表。
 """
 import io
 import json
 import os
 import re
 import sys
+
+# 词表 Markdown 的候选位置（按优先级）
+DEFAULT_SRC_CANDIDATES = [
+    os.path.join("docs", "2027专升本零基础3500词汇.md"),
+    "2027专升本零基础3500词汇.md",
+]
+DEFAULT_OUT = os.path.join("public", "data", "catalog.json")
+
+
+def resolve_source(path=None):
+    """定位词表 Markdown：显式路径 > 候选路径 > 仓库内搜索。"""
+    if path:
+        if not os.path.isfile(path):
+            raise SystemExit("找不到词表文件: %s" % path)
+        return path
+    for candidate in DEFAULT_SRC_CANDIDATES:
+        if os.path.isfile(candidate):
+            return candidate
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", "out", ".next", ".git")]
+        for name in files:
+            if name.endswith(".md") and "3500" in name:
+                return os.path.join(dirpath, name)
+    raise SystemExit("未找到词表 Markdown，请用 npm run catalog 或显式指定路径")
 
 # ---------- 行级正则 ----------
 HEADER_RE = re.compile(r"^\s*2027\s+老秦专升本\s+3500\s+词")
@@ -253,6 +281,7 @@ def build(md_path, out_path):
         meaning = rec["meaning"]
         words.append({
             "id": next_id,
+            "number": rec["index"],
             "word": rec["word"],
             "meaning": meaning,
             "phonetic": rec["phonetic"],
@@ -281,7 +310,7 @@ def build(md_path, out_path):
 
     catalog = {
         "catalogIdVersion": 2,
-        "source": "2027专升本零基础3500词汇.md",
+        "source": os.path.basename(md_path),
         "collections": collections,
         "words": words,
     }
@@ -309,6 +338,6 @@ def build(md_path, out_path):
 
 
 if __name__ == "__main__":
-    src = sys.argv[1] if len(sys.argv) > 1 else "2027专升本零基础3500词汇.md"
-    dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join("public", "data", "catalog.json")
+    src = resolve_source(sys.argv[1] if len(sys.argv) > 1 else None)
+    dst = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUT
     build(src, dst)
