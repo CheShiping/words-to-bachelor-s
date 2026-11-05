@@ -282,7 +282,11 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return;
       const ignore = ignoreRef.current;
-      if (ignore && e.target?.closest?.(ignore)) return;
+      if (ignore) {
+        // closest 会命中容器自身（.main 本身就是 swipe-deck），这里只排除真正的嵌套区域
+        const hit = e.target?.closest?.(ignore);
+        if (hit && hit !== deckEl) return;
+      }
       const t = e.touches[0];
       gesture.current = { x: t.clientX, y: t.clientY, dragging: false };
     };
@@ -1042,6 +1046,21 @@ export default function BloomApp() {
     continueStudy,
   };
 
+  /* 触摸：左右滑动切换页面（卡片区域内部的滑动不抢占） */
+  const [pageDeckEl, setPageDeckEl] = useState(null);
+  useSwipeDeck(pageDeckEl, {
+    getDragEl: () => pageDeckEl?.querySelector(".page.active"),
+    ignoreSelector: ".swipe-deck, input, textarea, select",
+    threshold: 72,
+    onSwipe: (step) => {
+      const ids = PAGES.map(([id]) => id);
+      const at = ids.indexOf(page);
+      if (at < 0) return;
+      const next = ids[(at + step + ids.length) % ids.length];
+      if (next !== page) navigate(next);
+    },
+  });
+
   const navButtons = (variant) =>
     PAGES.map(([id, label, icon]) => (
       <button key={id} className={page === id ? "active" : ""} data-page={id} aria-label={`前往${label}`} onClick={() => navigate(id)}>
@@ -1124,7 +1143,7 @@ export default function BloomApp() {
             </button>
           </div>
         </header>
-        <main className="main">
+        <main className="main swipe-deck" ref={setPageDeckEl}>
           {PAGES.map(([id]) => (
             <section
               key={id}
@@ -1342,6 +1361,7 @@ function HomePage({ app }) {
       <p className="home-hint">
         累计进度 {stats.percent}% · 收藏 {stats.favorites} 个单词
       </p>
+      <p className="swipe-hint page-swipe-hint">← 左右滑动可切换页面</p>
       <div className="home-grid">
         <div className="journal-card glass pomodoro-card">
           <div className="kicker">Pomodoro</div>
