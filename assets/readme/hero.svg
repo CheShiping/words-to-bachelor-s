@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">词间日和 · Words in Bloom — 专升本 3500 词学习应用</title>
+  <desc id="heroDesc">左侧是项目名与线上地址，右侧是三张真实单词卡片（memory /ˈmeməri/ n. 回忆、characteristic /ˌkærəktəˈrɪstɪk/ a. 典型的、progress 第 15 组），背景为暖粉和风底色与樱花瓣。</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdfaf7"/>
+      <stop offset="0.55" stop-color="#f9f0ef"/>
+      <stop offset="1" stop-color="#f5edee"/>
+    </linearGradient>
+    <radialGradient id="blush" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#e7b8c4" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#e7b8c4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cool" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#bdd5e3" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#bdd5e3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cardFace" x1="0" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.97"/>
+      <stop offset="1" stop-color="#fbf3f3" stop-opacity="0.93"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c88798"/>
+      <stop offset="1" stop-color="#b56f82"/>
+    </linearGradient>
+    <radialGradient id="castShadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6b4450" stop-opacity="0.2"/>
+      <stop offset="0.6" stop-color="#6b4450" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#6b4450" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="frame">
+      <rect width="1200" height="380" rx="26"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1200" height="380" fill="url(#bg)"/>
+    <circle cx="1040" cy="40" r="280" fill="url(#blush)"/>
+    <circle cx="70" cy="372" r="230" fill="url(#cool)"/>
+
+    <!-- 花瓣：呼应应用里的三层花瓣粒子 -->
+    <g fill="#e7b8c4" opacity="0.55">
+      <ellipse cx="1128" cy="86" rx="9" ry="5" transform="rotate(-28 1128 86)"/>
+      <ellipse cx="1052" cy="308" rx="8" ry="4.5" transform="rotate(16 1052 308)"/>
+      <ellipse cx="742" cy="62" rx="7" ry="4" transform="rotate(-14 742 62)"/>
+      <ellipse cx="606" cy="322" rx="6" ry="3.5" transform="rotate(24 606 322)"/>
+    </g>
+    <g fill="#ddc8cd" opacity="0.5">
+      <ellipse cx="1160" cy="196" rx="7" ry="4" transform="rotate(38 1160 196)"/>
+      <ellipse cx="806" cy="344" rx="5" ry="3" transform="rotate(-20 806 344)"/>
+    </g>
+
+    <!-- 左侧：项目身份 -->
+    <g id="identity">
+      <text x="76" y="104" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="20" letter-spacing="3.4" fill="#b56f82">专升本 3500 词 · 纯静态</text>
+      <text x="74" y="182" font-family="Georgia, 'Songti SC', 'Noto Serif SC', serif" font-size="62" font-weight="600" letter-spacing="2" fill="#3a3134">词间日和</text>
+      <text x="76" y="222" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="26" letter-spacing="7" fill="#9d8289">WORDS IN BLOOM</text>
+      <text x="76" y="266" font-family="Georgia, 'Songti SC', serif" font-size="21" fill="#6b5d61">背单词，也可以是一件安静的事。</text>
+
+      <!-- 线上地址 -->
+      <rect x="76" y="292" width="500" height="46" rx="23" fill="#ffffff" fill-opacity="0.82" stroke="#b56f82" stroke-opacity="0.24"/>
+      <circle cx="102" cy="315" r="5" fill="#b56f82"/>
+      <text x="120" y="322" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#8d6c44">cheshiping.github.io/words-to-bachelor-s</text>
+    </g>
+
+    <!-- 右侧：真实词卡堆叠 -->
+    <g id="card-stack">
+      <ellipse cx="944" cy="304" rx="170" ry="26" fill="url(#castShadow)"/>
+      <g transform="translate(940 196)">
+        <g transform="rotate(-11) translate(-58 -8)">
+          <rect x="-128" y="-80" width="256" height="160" rx="20" fill="#ffffff" fill-opacity="0.72" stroke="#b56f82" stroke-opacity="0.2"/>
+        </g>
+        <g transform="rotate(-5.5) translate(-30 -4)">
+          <rect x="-128" y="-80" width="256" height="160" rx="20" fill="#ffffff" fill-opacity="0.86" stroke="#b56f82" stroke-opacity="0.22"/>
+        </g>
+        <g id="front-card">
+          <rect x="-132" y="-84" width="264" height="168" rx="20" fill="url(#cardFace)" stroke="#b56f82" stroke-opacity="0.22"/>
+          <rect x="-132" y="-84" width="264" height="168" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.4"/>
+          <rect x="-108" y="-64" width="58" height="24" rx="12" fill="#eee6e5"/>
+          <text x="-79" y="-47" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="16" fill="#9c6b76" text-anchor="middle">名词</text>
+          <text x="-38" y="-47" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#b39aa1">#1</text>
+
+          <text x="0" y="8" font-family="Georgia, 'Songti SC', 'Noto Serif SC', serif" font-size="38" fill="#3a3134" text-anchor="middle">memory</text>
+          <text x="0" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#9d8289" text-anchor="middle">/ˈmeməri/</text>
+          <text x="0" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="20" fill="#6b5d61" text-anchor="middle">n. 回忆</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- 底部元信息 -->
+    <text x="1124" y="352" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" letter-spacing="1" fill="#a6979a" text-anchor="end">3,289 词 · 33 组 · Next.js 15 · 明暗双主题</text>
+  </g>
+</svg>

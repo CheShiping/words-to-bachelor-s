@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="248" viewBox="0 0 1200 248" role="img" aria-labelledby="pipeTitle pipeDesc">
+  <title id="pipeTitle">词库数据流：词表原文 → 解析清洗 → catalog.json → 静态站点</title>
+  <desc id="pipeDesc">四个阶段：docs 下的词表 Markdown 原文，经 build_catalog.py 解析清洗，生成 3,289 词的 catalog.json，再由 Next.js 静态导出到 out 并发布到 GitHub Pages。</desc>
+
+  <defs>
+    <linearGradient id="pipeBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdfaf7"/>
+      <stop offset="1" stop-color="#f7f0ef"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#c9aab2"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="248" rx="22" fill="url(#pipeBg)"/>
+  <rect x="0.5" y="0.5" width="1199" height="247" rx="22" fill="none" stroke="#b56f82" stroke-opacity="0.14"/>
+
+  <text x="40" y="52" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="20" letter-spacing="2.6" fill="#b56f82">词库是怎么来的</text>
+
+  <!-- 01 词表原文 -->
+  <g transform="translate(40 84)">
+    <rect width="252" height="104" rx="16" fill="#ffffff" fill-opacity="0.9" stroke="#b56f82" stroke-opacity="0.2"/>
+    <text x="22" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22" font-weight="600" fill="#4c3d41">词表原文</text>
+    <text x="22" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#9d8289">docs/*.md</text>
+    <text x="22" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#a6979a">第 1–33 组 · 3500 序号</text>
+    <text x="230" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#d3bcc3" text-anchor="end">01</text>
+  </g>
+
+  <line x1="300" y1="136" x2="322" y2="136" stroke="#c9aab2" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 02 解析清洗 -->
+  <g transform="translate(330 84)">
+    <rect width="252" height="104" rx="16" fill="#ffffff" fill-opacity="0.9" stroke="#b56f82" stroke-opacity="0.2"/>
+    <text x="22" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22" font-weight="600" fill="#4c3d41">解析与清洗</text>
+    <text x="22" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#9d8289">build_catalog.py</text>
+    <text x="22" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#a6979a">还原断行 · 去噪 · 去重</text>
+    <text x="230" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#d3bcc3" text-anchor="end">02</text>
+  </g>
+
+  <line x1="590" y1="136" x2="612" y2="136" stroke="#c9aab2" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 03 词库 JSON -->
+  <g transform="translate(620 84)">
+    <rect width="252" height="104" rx="16" fill="#ffffff" fill-opacity="0.9" stroke="#b56f82" stroke-opacity="0.2"/>
+    <text x="22" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22" font-weight="600" fill="#4c3d41">词库数据</text>
+    <text x="22" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#9d8289">catalog.json</text>
+    <text x="22" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#a6979a">3,289 词 · 33 组</text>
+    <text x="230" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#d3bcc3" text-anchor="end">03</text>
+  </g>
+
+  <line x1="880" y1="136" x2="902" y2="136" stroke="#c9aab2" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 04 静态站点 -->
+  <g transform="translate(910 84)">
+    <rect width="252" height="104" rx="16" fill="#ffffff" fill-opacity="0.9" stroke="#b56f82" stroke-opacity="0.2"/>
+    <text x="22" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="22" font-weight="600" fill="#4c3d41">静态站点</text>
+    <text x="22" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#9d8289">out/</text>
+    <text x="22" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#a6979a">GitHub Pages 托管</text>
+    <text x="230" y="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" fill="#d3bcc3" text-anchor="end">04</text>
+  </g>
+
+  <text x="40" y="222" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" fill="#b3a3a6">npm run catalog  →  npm run build  →  push to main</text>
+</svg>

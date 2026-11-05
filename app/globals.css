@@ -1916,10 +1916,9 @@ body.quiz-custom-cursor * { cursor: none !important; }
   opacity: var(--art-opacity);
   filter: saturate(38%) contrast(84%) brightness(0.55);
 }
+/* 樱枝是白底水彩图，暗色下 screen 混合会让白底变成一块亮矩形，直接隐去 */
 [data-theme="dark"] .sakura-branch {
-  opacity: var(--art-branch-opacity);
-  mix-blend-mode: screen;
-  filter: saturate(55%) contrast(86%) brightness(0.8);
+  display: none;
 }
 
 /* --- 组件级：浅色小色块需要跟着反色 --- */
