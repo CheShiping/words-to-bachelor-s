@@ -58,3 +58,6 @@ logs/
 *.temp
 tmp/
 temp/
+
+# 截图 / 调试产物
+/shots/
