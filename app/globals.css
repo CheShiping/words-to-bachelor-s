@@ -48,7 +48,10 @@ body {
   background-attachment: fixed, fixed, fixed;
   background-color: #fdfbf8;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
+  /* clip 不建立滚动容器，sticky 顶栏不会被 body 的横向裁剪破坏 */
+  overflow-x: clip;
 }
 /* 低干扰网点，压住渐变的塑料感 */
 body::before {
@@ -306,6 +309,7 @@ body.no-motion .page {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 .topbar {
   position: sticky;
@@ -326,6 +330,13 @@ body.no-motion .page {
   letter-spacing: 0.025em;
   line-height: 1.3;
   white-space: nowrap;
+}
+/* 顶栏右侧工具区：保证两个按钮之间有间距且不换行 */
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 .brand small {
   display: block;
@@ -671,6 +682,7 @@ body.no-motion .page {
 .pomodoro-phase {
   color: var(--muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 @keyframes timerPulse {
   0%, 100% { transform: scale(1); }
@@ -686,6 +698,7 @@ body.no-motion .page {
   font-size: 24px;
   color: #4c3d41;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 /* 学习路径卡 */
 .path-row {
@@ -780,6 +793,8 @@ select.field {
   color: #574449;
   font-size: 13.5px;
   outline: none;
+  /* 输入框默认 min-width:auto 会在 flex 容器里撑破整行 */
+  min-width: 0;
   transition: box-shadow 0.16s ease, border-color 0.16s ease;
 }
 .field:focus {
@@ -840,7 +855,7 @@ select.field {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
   gap: 16px;
 }
 .word-card {
@@ -963,6 +978,11 @@ select.field {
   font-size: 14.5px;
   line-height: 2;
 }
+.empty-glyph {
+  font-size: 44px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
 
 /* ===== 沉浸学习 ===== */
 .study-head { align-items: center; }
@@ -992,6 +1012,7 @@ select.field {
   font-size: clamp(38px, 5.4vw, 58px);
   letter-spacing: 0.05em;
   color: #443539;
+  overflow-wrap: anywhere;
 }
 .study-card .study-meaning {
   margin: 0;
@@ -999,6 +1020,7 @@ select.field {
   font-size: 16.5px;
   line-height: 1.95;
   max-width: 560px;
+  overflow-wrap: anywhere;
 }
 .study-card .phonetic {
   font-size: 17px;
@@ -1076,6 +1098,7 @@ select.field {
   font-size: clamp(34px, 5vw, 50px);
   color: #443539;
   letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
 }
 .face .phonetic {
   font-size: 15px;
@@ -1088,6 +1111,7 @@ select.field {
   line-height: 1.9;
   max-width: 540px;
   overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 .face .flip-tip {
   color: var(--light);
@@ -1245,6 +1269,7 @@ select.field {
   margin: 6px 0;
   font-size: 14px;
   color: #6d5d61;
+  overflow-wrap: anywhere;
 }
 .result-actions {
   display: flex;
@@ -1456,27 +1481,91 @@ body.quiz-custom-cursor * { cursor: none !important; }
   to { transform: rotate(360deg); }
 }
 
-/* ===== 响应式 ===== */
+/* ============================================================
+   响应式 / 移动端适配
+   断点：1080 平板横屏 → 900 平板 → 768 手机/平板竖屏 → 560 手机 → 400 小屏
+   ============================================================ */
+
+/* --- 触摸设备：用按下态替代 hover 反馈 --- */
+@media (hover: none) {
+  .pill:active,
+  .round-btn:active,
+  .icon-btn:active,
+  .motion-toggle:active,
+  .option:active,
+  .word-card:active,
+  .journal-card:active,
+  .stat:active,
+  .fav-btn:active,
+  .pagination button:active,
+  .bottom-nav button:active {
+    transform: translateY(1px) scale(0.99);
+    filter: brightness(0.97);
+  }
+  /* 闪卡没有 hover，保留一个常驻阴影提示"可点击翻面" */
+  .flip-card:not(.flipped) .front {
+    box-shadow:
+      0 18px 40px rgba(93, 61, 70, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  }
+}
+
+/* --- 1080px：平板横屏与窄笔电 --- */
+@media (max-width: 1080px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* --- 1024px --- */
 @media (max-width: 1024px) {
   .home-grid { grid-template-columns: 1fr 1fr; }
   .nav button { min-width: 64px; }
+  .nav { gap: 2px; }
 }
+
+/* --- 900px：顶栏开始收紧（导航仍在，底部导航尚未接管） --- */
 @media (max-width: 900px) {
-  .nav { display: none; }
   .topbar { justify-content: space-between; }
+  .topbar { gap: 10px; padding: 8px 12px 8px 16px; }
+  .brand { font-size: 16px; }
+  .nav button { min-width: 56px; padding: 8px 6px; font-size: 12px; }
+  .nav button .nav-icon { font-size: 17px; }
 }
+
+/* --- 768px：手机 / 平板竖屏，主战场 --- */
 @media (max-width: 768px) {
+  /* 顶栏：压缩高度，工具区允许收缩 */
+  .topbar {
+    height: 62px;
+    top: 8px;
+    margin-top: 8px;
+    padding: 6px 10px 6px 14px;
+    border-radius: 20px;
+    gap: 8px;
+  }
+  .brand { font-size: 15px; }
+  .nav { display: none; }
+  .motion-toggle { padding: 7px 11px; }
+  .icon-btn { padding: 7px 12px; }
+
+  /* 页面容器 */
+  .main {
+    width: calc(100% - 24px);
+    padding: 26px 0 132px;
+  }
+  .page { border-radius: 22px; }
+
+  /* 底部导航：接管页面切换，并避开 iPhone 小白条 */
   .bottom-nav {
     display: flex;
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 14px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     z-index: 40;
     gap: 4px;
     padding: 8px;
     border-radius: 22px;
-    width: min(560px, calc(100vw - 28px));
+    width: min(560px, calc(100vw - 24px));
   }
   .bottom-nav button {
     flex: 1;
@@ -1484,27 +1573,188 @@ body.quiz-custom-cursor * { cursor: none !important; }
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    padding: 7px 2px;
+    padding: 8px 2px;
     border-radius: 14px;
     color: var(--muted);
     font-size: 11px;
+    min-width: 0;
+    white-space: nowrap;
   }
-  .bottom-nav button span { font-size: 18px; font-style: normal; }
+  .bottom-nav button span { font-size: 18px; font-style: normal; line-height: 1.1; }
   .bottom-nav button.active { color: var(--plum); background: var(--pink-soft); }
-  .main { padding-bottom: 120px; }
-  .dashboard { flex-direction: column; }
+
+  .to-top { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .pomodoro-mini { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+  /* 首页 */
+  .garden-background-art { min-height: 200px; height: 46vw; }
+  .sakura-branch { width: min(clamp(410px, 40vw, 760px), 150vw); opacity: 0.2; }
+  .hero h1 { font-size: clamp(30px, 9vw, 42px); }
+  .hero .jp { font-size: 15px; }
+  .hero .subtitle { font-size: 13.5px; }
+  .dashboard { flex-direction: column; gap: 18px; padding: 22px 16px; }
+  .ring-wrap { width: 132px; height: 132px; }
+  .ring-wrap small { bottom: 20px; }
   .stats { grid-template-columns: 1fr 1fr; width: 100%; }
+  .stat { padding: 16px 14px; }
+  .stat b { font-size: 24px; }
   .home-grid { grid-template-columns: 1fr; }
+  .journal-card { padding: 18px 16px; }
+  .latest-title { font-size: 20px; }
+  .path-item { grid-template-columns: 52px 1fr 46px; }
+  .dial-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .pomodoro-side { text-align: left; }
+  .home-actions { flex-wrap: wrap; }
+  .home-actions .pill { flex: 1 1 40%; }
+
+  /* 骨架屏按钮原本固定 168px，三枚并排会横向溢出 */
+  .home-boot-actions { flex-wrap: wrap; gap: 10px; }
+  .home-boot-action { width: auto; flex: 1 1 88px; }
+
+  /* 词典库 / 收藏夹 */
+  .section-head { flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+  .section-head h2 { font-size: 21px; }
+  .section-head .field { flex: 1 1 100%; max-width: none; }
+  .filters { padding: 12px; gap: 10px; border-radius: 18px; }
+  .filters .field { min-width: 0; flex: 1 1 140px; }
+  .filters .search { min-width: 0; flex: 1 1 100%; }
+  .grid { gap: 12px; }
+  .word-card { padding: 16px 16px; border-radius: 18px; }
+  .word-card h3 { font-size: 19px; }
+  .pagination button { min-width: 42px; height: 42px; }
+  .empty { padding: 34px 16px; }
+
+  /* 沉浸学习：卡片占满宽度，上一/下一键并排放在卡片下方 */
+  .study-head .field { max-width: none; }
+  .study-stage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "card card"
+      "prev next";
+    gap: 14px;
+    align-items: center;
+  }
+  .study-stage > .study-card { grid-area: card; width: 100%; }
+  .study-stage > .round-btn:first-of-type { grid-area: prev; justify-self: center; }
+  .study-stage > .round-btn:last-of-type { grid-area: next; justify-self: center; }
+  .study-card { padding: 24px 18px; min-height: 0; border-radius: 24px; }
+  .study-card .study-word { font-size: clamp(28px, 9vw, 38px); }
+  .study-card .study-meaning { font-size: 15.5px; }
+  .study-actions { flex-wrap: wrap; }
+  .study-actions .pill { flex: 1 1 auto; }
+  .study-hint { display: none; }
+
+  /* 记忆卡片 */
+  .flip-scene { height: 340px; }
+  .face { padding: 22px 18px; border-radius: 28px; }
+  .face .flip-word { font-size: clamp(26px, 8.5vw, 34px); }
+  .face .flip-meaning { font-size: 15px; }
+  .flash-nav { flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .flash-nav .pill { flex: 1 1 auto; }
+
+  /* 记忆测试 */
+  .quiz-setup { padding: 22px 18px; border-radius: 24px; }
+  .quiz-setup .setup-grid { grid-template-columns: 1fr; }
+  .quiz-card { padding: 22px 18px; min-height: 0; border-radius: 24px; }
+  .quiz-card .prompt { font-size: clamp(21px, 6vw, 26px); }
   .options { grid-template-columns: 1fr; }
-  .study-stage { flex-direction: column; }
-  .study-card { width: 100%; padding: 28px 22px; min-height: 320px; }
-  .to-top { bottom: 88px; }
-  .pomodoro-mini { bottom: 88px; }
+  .option { padding: 14px 16px; }
+  .quiz-actions { flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .quiz-actions .pill { flex: 1 1 auto; }
+  /* 长单词会让"沉浸学习 xxx"按钮撑破卡片，单独占一行并截断 */
+  .quiz-actions .quiz-jump {
+    flex: 1 1 100%;
+    order: 3;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .blank-row { flex-wrap: wrap; }
+  /* 输入框默认 min-width:auto 会撑满整行，置 0 才能与提交按钮并排 */
+  .blank-row .field { flex: 1 1 140px; max-width: none; min-width: 0; }
+  .blank-row .pill { flex: 0 0 auto; }
+  .result-card { padding: 26px 18px; border-radius: 24px; }
+  .result-score { font-size: 52px; }
+
+  /* 弹窗 */
+  .dialog { padding: 20px 18px; max-width: calc(100vw - 32px); }
+  .dialog .actions { flex-wrap: wrap; }
+  .dialog .actions .pill { flex: 1 1 auto; }
+
+  /* 触摸目标不小于 44px */
+  .pill { padding: 12px 20px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .fav-btn { width: 44px; height: 44px; font-size: 19px; }
+  .pagination button { min-width: 44px; height: 44px; }
+  .round-btn { width: 48px; height: 48px; }
 }
+
+/* --- 560px：常规手机 --- */
 @media (max-width: 560px) {
-  .stats { grid-template-columns: 1fr 1fr; }
   .brand small { display: none; }
   .motion-toggle .motion-label { display: none; }
+  .topbar { height: 56px; }
+  .main { padding-top: 20px; }
+
+  .hero h1 { font-size: 28px; }
+  .hero .eyebrow { font-size: 11px; }
+  .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat b { font-size: 21px; }
+  .ring-wrap { width: 118px; height: 118px; }
+  .ring-wrap small { bottom: 16px; font-size: 11px; }
+
+  .section-head h2 { font-size: 19px; }
+  .word-card { padding: 14px; }
+  .word-card h3 { font-size: 18px; }
+  .word-card .meaning { font-size: 13px; }
+
+  .study-card .study-word { font-size: 30px; }
+  .flip-scene { height: 300px; }
+  .face .flip-word { font-size: 26px; }
+
+  .quiz-card .prompt { font-size: 21px; }
+  .result-score { font-size: 44px; }
+
+  /* 底部导航文字收紧，避免"沉浸学习"四字换行 */
+  .bottom-nav button { font-size: 10px; }
+  .bottom-nav button span { font-size: 17px; }
+  .to-top { width: 40px; height: 40px; }
+  .pomodoro-mini { font-size: 12px; padding: 8px 10px; }
+}
+
+/* --- 400px：小屏兜底 --- */
+@media (max-width: 400px) {
+  .main { width: calc(100% - 16px); }
+  .topbar { padding: 5px 8px 5px 12px; }
+  .brand { font-size: 14px; }
+  .icon-btn { padding: 6px 9px; font-size: 12px; }
+  .hero h1 { font-size: 25px; }
+  .study-card .study-word { font-size: 27px; }
+  .face .flip-word { font-size: 23px; }
+  .bottom-nav button { font-size: 9px; }
+  .bottom-nav button span { font-size: 16px; }
+}
+
+/* --- 360px：极窄屏兜底 --- */
+@media (max-width: 360px) {
+  .stats { grid-template-columns: 1fr; }
+  .topbar { height: 52px; }
+  .main { padding-top: 16px; }
+  .word-card { padding: 12px; }
+  .study-card .study-word { font-size: 25px; }
+  .face .flip-word { font-size: 21px; }
+  .bottom-nav { gap: 2px; padding: 6px; }
+  .bottom-nav button { font-size: 9px; padding: 6px 1px; }
+}
+
+/* --- 输入框在 iOS 上聚焦不缩放页面 --- */
+@media (max-width: 768px) {
+  .field,
+  .filters input,
+  .filters select {
+    font-size: 16px;
+  }
 }
 
 /* ===== 减弱动效：花瓣静置、计时器不呼吸 ===== */

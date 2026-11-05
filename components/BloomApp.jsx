@@ -639,7 +639,7 @@ export default function BloomApp() {
       const mode = ["cn-en", "en-cn", "blank"][Math.floor(Math.random() * 3)];
       if (mode === "blank") return { wordId: w.id, mode };
       const distractors = shuffled(quizPool.filter((x) => x.id !== w.id)).slice(0, 3);
-      const choices = shuffleWith(Date.now() >>> 0)([w, ...distractors]);
+      const choices = shuffled([w, ...distractors]);
       const options = choices.map((x) => ({
         text: mode === "cn-en" ? x.word : x.meaning,
         correct: x.id === w.id,
@@ -1815,7 +1815,7 @@ function QuizPage({ app, quizWord, quizCardRef, moveQuiz, nextQuestion }) {
             ← 上一题
           </button>
           {w && (
-            <button className="pill" onClick={() => { patchUser((prev) => ({ ...prev, lastWordId: w.id, studyCollectionId: "all" })); navigate("study"); }}>
+            <button className="pill quiz-jump" onClick={() => { patchUser((prev) => ({ ...prev, lastWordId: w.id, studyCollectionId: "all" })); navigate("study"); }}>
               沉浸学习 {w.word}
             </button>
           )}
@@ -1868,7 +1868,7 @@ function FavoritesPage({ app }) {
         </>
       ) : (
         <div className="empty glass">
-          <div style={{ fontSize: 44 }}>♡</div>
+          <div className="empty-glyph">♡</div>
           <p>
             Nothing has been saved yet.
             <br />
