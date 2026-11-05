@@ -1,0 +1,18 @@
+{
+  "name": "words-in-bloom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "词间日和 · Words in Bloom — 专升本单词版（纯静态 Next.js 复刻）",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx serve out",
+    "catalog": "python scripts/build_catalog.py \"2027专升本零基础3500词汇.md\" public/data/catalog.json"
+  },
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  }
+}
