@@ -18,10 +18,16 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+// 首帧前确定主题（优先本地存储，其次系统偏好），避免暗色模式下闪白
+const THEME_INIT = `(function(){try{var t=localStorage.getItem("wordsInBloomTheme");if(t!=="dark"&&t!=="light"){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();`;
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="zh-CN">
-      <body className="motion-enabled">{children}</body>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className="motion-enabled">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        {children}
+      </body>
     </html>
   );
 }

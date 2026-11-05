@@ -1126,6 +1126,28 @@ export default function BloomApp() {
           </nav>
           <div className="tools">
             <button
+              className="theme-btn"
+              onClick={() => {
+                const root = document.documentElement;
+                const next = root.dataset.theme === "dark" ? "light" : "dark";
+                root.dataset.theme = next;
+                try {
+                  localStorage.setItem("wordsInBloomTheme", next);
+                } catch {
+                  /* 隐私模式下忽略 */
+                }
+              }}
+              aria-label="切换明暗主题"
+              title="切换明暗主题"
+            >
+              <span className="theme-icon theme-icon-light" aria-hidden="true">
+                ☀
+              </span>
+              <span className="theme-icon theme-icon-dark" aria-hidden="true">
+                ☾
+              </span>
+            </button>
+            <button
               className={`motion-toggle ${motionEnabled ? "on" : ""}`}
               onClick={() => patchUser((prev) => ({ ...prev, motion: !(prev.motion !== false) }))}
               aria-pressed={motionEnabled}

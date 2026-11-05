@@ -29,6 +29,30 @@
     0 2px 5px rgba(58, 48, 51, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
   --page-width: 1160px;
+
+  /* --- 语义层：文字层级 --- */
+  --ink-1: #4c3d41;
+  --ink-2: #574449;
+  --ink-3: #75686b;
+  --ink-4: #9d8289;
+  --accent-ink: #9c6b76;
+  --accent-ink-gold: #8d6c44;
+  --accent-ink-green: #5f7a56;
+  --on-accent: #fff7f5;
+
+  /* --- 语义层：玻璃与表面 --- */
+  --glass-top: rgba(255, 255, 255, 0.78);
+  --glass-bottom: rgba(246, 243, 239, 0.72);
+  --hairline: rgba(255, 255, 255, 0.5);
+  --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.22));
+  --field-bg: rgba(255, 255, 255, 0.72);
+  --chip-bg: rgba(255, 255, 255, 0.6);
+  --raise-bg: rgba(255, 255, 255, 0.55);
+  --page-solid: #fdfbf8;
+  --skeleton-a: #efe7e3;
+  --skeleton-b: #f7f0ec;
+  --art-opacity: 0.6;
+  --art-branch-opacity: 0.25;
 }
 
 * {
@@ -44,9 +68,9 @@ body {
   background:
     radial-gradient(circle at 92% 18%, rgba(213, 166, 177, 0.16), transparent 27%),
     radial-gradient(circle at 7% 91%, rgba(201, 215, 220, 0.2), transparent 24%),
-    linear-gradient(132deg, #fdfbf8 0%, #f8f1f1 50%, #f6f1eb 100%);
+    linear-gradient(132deg, var(--page-solid) 0%, #f8f1f1 50%, #f6f1eb 100%);
   background-attachment: fixed, fixed, fixed;
-  background-color: #fdfbf8;
+  background-color: var(--page-solid);
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -242,7 +266,7 @@ body.no-motion .page {
 /* ===== 液态玻璃基类 ===== */
 .glass {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(246, 243, 239, 0.72)),
+    linear-gradient(145deg, var(--glass-top), var(--glass-bottom)),
     var(--card-bg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -284,9 +308,9 @@ body.no-motion .page {
   position: absolute;
   z-index: 0;
   inset: 1px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--hairline);
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.22));
+  background: var(--sheen);
   pointer-events: none;
 }
 .topbar > *,
@@ -325,7 +349,7 @@ body.no-motion .page {
   border-radius: 26px;
 }
 .brand {
-  color: #40383a;
+  color: var(--ink-1);
   font-size: 18px;
   letter-spacing: 0.025em;
   line-height: 1.3;
@@ -340,7 +364,7 @@ body.no-motion .page {
 }
 .brand small {
   display: block;
-  color: #75686b;
+  color: var(--ink-3);
   font-size: 11.5px;
   letter-spacing: 0.16em;
 }
@@ -354,7 +378,7 @@ body.no-motion .page {
   min-width: 78px;
   height: 66px;
   padding: 8px 11px;
-  color: #62575a;
+  color: var(--ink-2);
   font-size: 13px;
   font-weight: 600;
   border-radius: 18px;
@@ -406,7 +430,7 @@ body.no-motion .page {
   padding: 9px 14px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--chip-bg);
   color: var(--muted);
   font-size: 13px;
   transition: box-shadow 0.2s ease, background 0.2s ease;
@@ -441,11 +465,34 @@ body.no-motion .page {
 .motion-toggle.on .switch-track { background: var(--pink); }
 .motion-toggle.on .switch-track::after { transform: translateX(15px); }
 .motion-toggle .motion-state { font-style: normal; min-width: 1.2em; }
+/* 明暗主题切换：两个图标由 data-theme 决定显示哪一个，避免水合差异 */
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--chip-bg);
+  color: var(--plum);
+  font-size: 16px;
+  line-height: 1;
+  transition: box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.theme-btn:hover {
+  box-shadow: 0 8px 20px rgba(93, 61, 70, 0.16);
+  transform: translateY(-1px);
+}
+.theme-btn .theme-icon-dark { display: none; }
+[data-theme="dark"] .theme-btn .theme-icon-light { display: none; }
+[data-theme="dark"] .theme-btn .theme-icon-dark { display: inline; }
 .icon-btn {
   padding: 9px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--chip-bg);
   color: var(--muted);
   font-size: 13px;
   transition: box-shadow 0.2s ease, color 0.2s ease;
@@ -498,7 +545,7 @@ body.no-motion .page {
   letter-spacing: 0.38em;
 }
 .subtitle {
-  color: #7e686d;
+  color: var(--ink-3);
   font: italic 17px/1.8 Georgia, "Times New Roman", serif;
   letter-spacing: 0.09em;
   text-wrap: balance;
@@ -513,7 +560,7 @@ body.no-motion .page {
   padding: 7px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--raise-bg);
   color: var(--muted);
   font-size: 13px;
   letter-spacing: 0.06em;
@@ -570,7 +617,7 @@ body.no-motion .page {
   padding: 14px 18px;
   border-radius: 18px;
   border: 1px solid rgba(100, 84, 88, 0.14);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--raise-bg);
   text-align: left;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
@@ -581,7 +628,7 @@ body.no-motion .page {
 }
 .stat b {
   font: 700 26px Georgia, serif;
-  color: #574449;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 .stat span {
@@ -628,7 +675,7 @@ body.no-motion .page {
 .journal-card h3 {
   margin: 0;
   font-size: 17px;
-  color: #4c3d41;
+  color: var(--ink-1);
   letter-spacing: 0.05em;
 }
 .journal-card .kicker {
@@ -696,7 +743,7 @@ body.no-motion .page {
 }
 .latest-title {
   font-size: 24px;
-  color: #4c3d41;
+  color: var(--ink-1);
   letter-spacing: 0.04em;
   overflow-wrap: anywhere;
 }
@@ -742,8 +789,8 @@ body.no-motion .page {
   padding: 10px 20px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.72);
-  color: #574449;
+  background: var(--field-bg);
+  color: var(--ink-2);
   font-size: 13.5px;
   letter-spacing: 0.04em;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
@@ -756,13 +803,13 @@ body.no-motion .page {
 .pill.primary {
   background: linear-gradient(135deg, #c88798, #b56f82);
   border-color: transparent;
-  color: #fff7f5;
+  color: var(--on-accent);
 }
 .pill.primary:hover { box-shadow: 0 12px 26px rgba(181, 111, 130, 0.4); }
 .pill.danger {
   background: linear-gradient(135deg, #c47a86, #a85a68);
   border-color: transparent;
-  color: #fff5f3;
+  color: var(--on-accent);
 }
 .pill:disabled {
   opacity: 0.55;
@@ -775,7 +822,7 @@ body.no-motion .page {
   height: 46px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--field-bg);
   color: var(--plum);
   font-size: 18px;
   transition: transform 0.16s ease, box-shadow 0.16s ease;
@@ -789,8 +836,8 @@ select.field {
   padding: 10px 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.72);
-  color: #574449;
+  background: var(--field-bg);
+  color: var(--ink-2);
   font-size: 13.5px;
   outline: none;
   /* 输入框默认 min-width:auto 会在 flex 容器里撑破整行 */
@@ -814,7 +861,7 @@ select.field {
   margin: 0;
   font-size: 26px;
   letter-spacing: 0.06em;
-  color: #4c3d41;
+  color: var(--ink-1);
 }
 .section-head p {
   margin: 4px 0 0;
@@ -883,7 +930,7 @@ select.field {
   margin: 0;
   font-size: 21px;
   letter-spacing: 0.02em;
-  color: #4a3a3f;
+  color: var(--ink-1);
   word-break: break-word;
 }
 .fav-btn {
@@ -903,7 +950,7 @@ select.field {
 .fav-btn.active { color: var(--pink); }
 .word-card .meaning {
   margin: 0;
-  color: #6d5d61;
+  color: var(--ink-2);
   font-size: 13.5px;
   line-height: 1.75;
   display: -webkit-box;
@@ -913,7 +960,7 @@ select.field {
 }
 .phonetic {
   margin: 0;
-  color: #a0878e;
+  color: var(--ink-4);
   font-size: 12.5px;
   letter-spacing: 0.05em;
   font-family: "Times New Roman", Georgia, serif;
@@ -931,22 +978,22 @@ select.field {
   font-size: 11px;
   letter-spacing: 0.04em;
   background: var(--pink-soft);
-  color: #9c6b76;
+  color: var(--accent-ink);
 }
 .badge.collection {
   background: var(--gold-soft);
-  color: #8d6c44;
+  color: var(--accent-ink-gold);
 }
 .badge.num {
   background: transparent;
-  color: #b39aa1;
+  color: var(--ink-4);
   font-variant-numeric: tabular-nums;
   padding-left: 0;
 }
 .badge.s-new { background: #eceae6; color: #8f8789; }
 .badge.s-learning { background: #e8eef0; color: #5f7d8c; }
-.badge.s-review { background: var(--gold-soft); color: #8d6c44; }
-.badge.s-mastered { background: #e7ede4; color: #5f7a56; }
+.badge.s-review { background: var(--gold-soft); color: var(--accent-ink-gold); }
+.badge.s-mastered { background: #e7ede4; color: var(--accent-ink-green); }
 .pagination {
   display: flex;
   flex-wrap: wrap;
@@ -960,14 +1007,14 @@ select.field {
   padding: 0 10px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--chip-bg);
   color: var(--muted);
   font-size: 13px;
   transition: background 0.16s ease, color 0.16s ease;
 }
 .pagination button.current {
   background: linear-gradient(135deg, #c88798, #b56f82);
-  color: #fff7f5;
+  color: var(--on-accent);
   border-color: transparent;
 }
 .empty {
@@ -1011,12 +1058,12 @@ select.field {
   margin: 0;
   font-size: clamp(38px, 5.4vw, 58px);
   letter-spacing: 0.05em;
-  color: #443539;
+  color: var(--ink-1);
   overflow-wrap: anywhere;
 }
 .study-card .study-meaning {
   margin: 0;
-  color: #6d5d61;
+  color: var(--ink-2);
   font-size: 16.5px;
   line-height: 1.95;
   max-width: 560px;
@@ -1024,7 +1071,7 @@ select.field {
 }
 .study-card .phonetic {
   font-size: 17px;
-  color: #9d8289;
+  color: var(--ink-4);
   margin-bottom: 2px;
 }
 .study-card .study-hint {
@@ -1043,7 +1090,7 @@ select.field {
 .study-actions .pill.on {
   background: linear-gradient(135deg, #c88798, #b56f82);
   border-color: transparent;
-  color: #fff7f5;
+  color: var(--on-accent);
 }
 
 /* ===== 记忆卡片（双面交叉淡化） ===== */
@@ -1096,17 +1143,17 @@ select.field {
 .face .flip-word {
   margin: 0;
   font-size: clamp(34px, 5vw, 50px);
-  color: #443539;
+  color: var(--ink-1);
   letter-spacing: 0.04em;
   overflow-wrap: anywhere;
 }
 .face .phonetic {
   font-size: 15px;
-  color: #9d8289;
+  color: var(--ink-4);
 }
 .face .flip-meaning {
   margin: 0;
-  color: #6d5d61;
+  color: var(--ink-2);
   font-size: 16px;
   line-height: 1.9;
   max-width: 540px;
@@ -1142,7 +1189,7 @@ select.field {
   flex-direction: column;
   gap: 14px;
 }
-.quiz-setup h2 { margin: 0; font-size: 24px; color: #4c3d41; }
+.quiz-setup h2 { margin: 0; font-size: 24px; color: var(--ink-1); }
 .quiz-setup .setup-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1174,7 +1221,7 @@ select.field {
 }
 .quiz-card .prompt {
   font-size: clamp(24px, 3.6vw, 34px);
-  color: #443539;
+  color: var(--ink-1);
   letter-spacing: 0.03em;
   text-align: center;
   line-height: 1.6;
@@ -1194,7 +1241,7 @@ select.field {
   border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.66);
-  color: #574449;
+  color: var(--ink-2);
   font-size: 14.5px;
   text-align: left;
   line-height: 1.6;
@@ -1268,7 +1315,7 @@ select.field {
 .error-list li {
   margin: 6px 0;
   font-size: 14px;
-  color: #6d5d61;
+  color: var(--ink-2);
   overflow-wrap: anywhere;
 }
 .result-actions {
@@ -1303,7 +1350,7 @@ select.field {
   transition: transform 0.2s ease;
 }
 .modal.show .dialog { transform: none; }
-.dialog h3 { margin: 0 0 8px; color: #4c3d41; }
+.dialog h3 { margin: 0 0 8px; color: var(--ink-1); }
 .dialog p { margin: 0 0 18px; color: var(--muted); font-size: 13.5px; line-height: 1.8; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 10px; }
 
@@ -1320,10 +1367,10 @@ select.field {
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--raise-bg);
   border: 1px solid var(--border);
 }
-.sync-status[data-state="connected"] { color: #5f7a56; }
+.sync-status[data-state="connected"] { color: var(--accent-ink-green); }
 .sync-status[data-state="error"] { color: #a05464; }
 .footer-whisper {
   text-align: center;
@@ -1432,7 +1479,7 @@ body.quiz-custom-cursor * { cursor: none !important; }
   gap: 10px;
   cursor: default;
 }
-.home-boot-stat:hover { transform: none; box-shadow: none; background: rgba(255, 255, 255, 0.55); }
+.home-boot-stat:hover { transform: none; box-shadow: none; background: var(--raise-bg); }
 .home-boot-line {
   display: block;
   height: 24px;
@@ -1799,4 +1846,161 @@ body.quiz-custom-cursor * { cursor: none !important; }
   .glow, .sakura-branch { animation: none !important; }
   .pomodoro-dial.running .dial-time { animation: none; }
   html { scroll-behavior: auto; }
+}
+
+/* ============================================================
+   暗色主题「夜樱」
+   由 <html data-theme="dark"> 触发；变量优先，必要时做组件级覆盖
+   ============================================================ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* 调色板 */
+  --bg-main: #16121a;
+  --bg-secondary: #1e1820;
+  --card-bg: rgba(38, 31, 38, 0.88);
+  --card-hover: rgba(50, 41, 49, 0.96);
+  --pink: #d691a4;
+  --pink-light: #6d4d58;
+  --pink-soft: rgba(214, 145, 164, 0.15);
+  --gold: #c9a373;
+  --gold-soft: rgba(201, 163, 115, 0.16);
+  --plum: #edc9d3;
+  --text: #ece4e6;
+  --muted: #b1a3a8;
+  --light: #8a7c81;
+  --border: rgba(238, 222, 226, 0.13);
+  --shadow:
+    0 18px 40px rgba(0, 0, 0, 0.5),
+    0 2px 6px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* 文字层级 */
+  --ink-1: #f3eaec;
+  --ink-2: #ddcfd3;
+  --ink-3: #ab9da2;
+  --ink-4: #8d7f85;
+  --accent-ink: #d9a3b0;
+  --accent-ink-gold: #d6b487;
+  --accent-ink-green: #a9c39b;
+  --on-accent: #1a1319;
+
+  /* 玻璃与表面 */
+  --glass-top: rgba(50, 41, 49, 0.8);
+  --glass-bottom: rgba(31, 25, 32, 0.76);
+  --hairline: rgba(255, 255, 255, 0.07);
+  --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.035));
+  --field-bg: rgba(255, 255, 255, 0.06);
+  --chip-bg: rgba(255, 255, 255, 0.08);
+  --raise-bg: rgba(255, 255, 255, 0.045);
+  --page-solid: #16121a;
+  --skeleton-a: #2a2229;
+  --skeleton-b: #382d36;
+  --art-opacity: 0.1;
+  --art-branch-opacity: 0.07;
+}
+
+/* --- 底景：换成夜色，压低插画 --- */
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 92% 18%, rgba(181, 111, 130, 0.18), transparent 30%),
+    radial-gradient(circle at 7% 91%, rgba(120, 150, 172, 0.14), transparent 26%),
+    linear-gradient(132deg, #16121a 0%, #1c1520 50%, #151119 100%);
+  background-color: var(--page-solid);
+}
+[data-theme="dark"] body::before {
+  opacity: 0.16;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 0.7px, transparent 0.7px);
+}
+[data-theme="dark"] .garden-background-art {
+  opacity: var(--art-opacity);
+  filter: saturate(38%) contrast(84%) brightness(0.55);
+}
+[data-theme="dark"] .sakura-branch {
+  opacity: var(--art-branch-opacity);
+  mix-blend-mode: screen;
+  filter: saturate(55%) contrast(86%) brightness(0.8);
+}
+
+/* --- 组件级：浅色小色块需要跟着反色 --- */
+[data-theme="dark"] .badge.s-new {
+  background: rgba(255, 255, 255, 0.08);
+  color: #9b9096;
+}
+[data-theme="dark"] .badge.s-learning {
+  background: rgba(140, 180, 205, 0.16);
+  color: #9dc0d2;
+}
+[data-theme="dark"] .badge.s-mastered {
+  background: rgba(140, 175, 130, 0.16);
+  color: #a9c39b;
+}
+[data-theme="dark"] .stat {
+  border-color: var(--border);
+}
+[data-theme="dark"] .fav-btn {
+  color: #7d6f75;
+}
+[data-theme="dark"] .option {
+  background: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .option.correct {
+  background: rgba(140, 175, 130, 0.18);
+  border-color: rgba(140, 175, 130, 0.5);
+  color: #b6d0a6;
+  box-shadow: 0 0 30px rgba(120, 160, 110, 0.16);
+}
+[data-theme="dark"] .option.wrong {
+  background: rgba(214, 145, 164, 0.18);
+  border-color: rgba(214, 145, 164, 0.5);
+  color: #e6a9b8;
+}
+[data-theme="dark"] .nav button .nav-hover-circle {
+  background: radial-gradient(circle at 50% 20%, rgba(214, 145, 164, 0.3), rgba(214, 145, 164, 0.16) 62%, rgba(214, 145, 164, 0.08));
+}
+[data-theme="dark"] .home-boot-line,
+[data-theme="dark"] .home-boot-action {
+  background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 42%, var(--skeleton-a) 58%);
+  background-size: 300% 100%;
+}
+[data-theme="dark"] .motion-toggle .switch-track {
+  background: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .motion-toggle .switch-track::after {
+  background: #efe6e9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .to-top {
+  background: var(--card-bg);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+[data-theme="dark"] .word-card:hover,
+[data-theme="dark"] .stat:hover,
+[data-theme="dark"] .journal-card:hover,
+[data-theme="dark"] .pill:hover,
+[data-theme="dark"] .option:hover:not(:disabled) {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
+}
+[data-theme="dark"] .flip-card:not(.flipped):hover .front,
+[data-theme="dark"] .flip-card:focus-visible .front {
+  box-shadow:
+    0 25px 58px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .flip-card:not(.flipped) .front {
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* --- 氛围元素在暗色下压暗，避免过曝 --- */
+[data-theme="dark"] .petal-field {
+  opacity: 0.55;
+}
+[data-theme="dark"] .petal-field .petal {
+  filter: saturate(1.1) brightness(0.85);
+}
+[data-theme="dark"] .glow {
+  opacity: 0.1;
 }
