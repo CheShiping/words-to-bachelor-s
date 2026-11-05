@@ -1482,6 +1482,33 @@ body.quiz-custom-cursor * { cursor: none !important; }
 }
 
 /* ============================================================
+   触摸滑动：左右滑动切换卡片
+   ============================================================ */
+.swipe-deck {
+  /* 保留竖向滚动，横向手势交给脚本处理 */
+  touch-action: pan-y;
+}
+.swipe-target {
+  transform: translate3d(var(--swipe-x, 0px), 0, 0) rotate(var(--swipe-rot, 0deg));
+  opacity: var(--swipe-o, 1);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease;
+}
+.swipe-target.is-swiping {
+  transition: none;
+}
+.swipe-hint {
+  display: none;
+  margin: 14px 0 0;
+  text-align: center;
+  color: var(--light);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+@media (pointer: coarse) {
+  .swipe-hint { display: block; }
+}
+
+/* ============================================================
    响应式 / 移动端适配
    断点：1080 平板横屏 → 900 平板 → 768 手机/平板竖屏 → 560 手机 → 400 小屏
    ============================================================ */

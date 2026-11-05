@@ -265,6 +265,88 @@ async function switchCard(getCurrent, commit, direction, isActivePage) {
   }
 }
 
+/* ---------- 触摸滑动：左右滑动切换卡片 ---------- */
+function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelector = "" } = {}) {
+  const gesture = useRef(null);
+  const swipeRef = useRef(onSwipe);
+  const dragRef = useRef(getDragEl);
+  const ignoreRef = useRef(ignoreSelector);
+  swipeRef.current = onSwipe;
+  dragRef.current = getDragEl;
+  ignoreRef.current = ignoreSelector;
+
+  useEffect(() => {
+    if (!deckEl) return;
+    const dragEl = () => (dragRef.current ? dragRef.current() : deckEl);
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const ignore = ignoreRef.current;
+      if (ignore && e.target?.closest?.(ignore)) return;
+      const t = e.touches[0];
+      gesture.current = { x: t.clientX, y: t.clientY, dragging: false };
+    };
+
+    const onTouchMove = (e) => {
+      const g = gesture.current;
+      if (!g) return;
+      const t = e.touches[0];
+      const dx = t.clientX - g.x;
+      const dy = t.clientY - g.y;
+      if (!g.dragging) {
+        if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(dy)) return;
+        g.dragging = true;
+        const el = dragEl();
+        if (el) el.classList.add("is-swiping");
+      }
+      const el = dragEl();
+      if (!el) return;
+      const damp = dx * 0.55;
+      el.style.setProperty("--swipe-x", `${damp.toFixed(1)}px`);
+      el.style.setProperty("--swipe-rot", `${(damp * 0.03).toFixed(2)}deg`);
+      el.style.setProperty("--swipe-o", String(Math.max(0.45, 1 - Math.abs(dx) / 1100)));
+    };
+
+    const onTouchEnd = (e) => {
+      const g = gesture.current;
+      gesture.current = null;
+      if (!g) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - g.x;
+      const dy = t.clientY - g.y;
+      if (!g.dragging) return; // 普通点击，交给原有 onClick
+      const el = dragEl();
+      if (el) {
+        el.classList.remove("is-swiping");
+        el.style.removeProperty("--swipe-x");
+        el.style.removeProperty("--swipe-rot");
+        el.style.removeProperty("--swipe-o");
+      }
+      // 滑动结束后浏览器会补发 click，这里短暂截断一次，避免误触卡片里的按钮
+      const swallow = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+      deckEl.addEventListener("click", swallow, { capture: true });
+      setTimeout(() => deckEl.removeEventListener("click", swallow, { capture: true }), 400);
+      if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) {
+        swipeRef.current?.(dx < 0 ? 1 : -1);
+      }
+    };
+
+    deckEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    deckEl.addEventListener("touchmove", onTouchMove, { passive: true });
+    deckEl.addEventListener("touchend", onTouchEnd);
+    deckEl.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      deckEl.removeEventListener("touchstart", onTouchStart);
+      deckEl.removeEventListener("touchmove", onTouchMove);
+      deckEl.removeEventListener("touchend", onTouchEnd);
+      deckEl.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [deckEl, threshold]);
+}
+
 /* ============================================================
  * 主组件
  * ============================================================ */
@@ -1499,6 +1581,13 @@ function StudyPage({ app, studyCardRef }) {
     if (word) app.markStudy(word.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word?.id]);
+
+  /* 触摸：左右滑动切换单词 */
+  const [deckEl, setDeckEl] = useState(null);
+  useSwipeDeck(deckEl, {
+    getDragEl: () => deckEl,
+    onSwipe: (step) => move(step),
+  });
   if (!pool.length) {
     return (
       <>
@@ -1530,7 +1619,7 @@ function StudyPage({ app, studyCardRef }) {
           ))}
         </select>
       </div>
-      <div className="study-stage" ref={studyCardRef}>
+      <div className="study-stage swipe-deck swipe-target" ref={(el) => { studyCardRef.current = el; setDeckEl(el); }}>
         <button className="round-btn" onClick={() => move(-1)} aria-label="上一个">
           ←
         </button>
@@ -1567,6 +1656,7 @@ function StudyPage({ app, studyCardRef }) {
           →
         </button>
       </div>
+      <p className="swipe-hint">← 左右滑动切换单词 · 上滑不翻页</p>
     </>
   );
 }
@@ -1592,6 +1682,13 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
     window.__moveFlash = move;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [move]);
+
+  /* 触摸：左右滑动切换卡片 */
+  const [deckEl, setDeckEl] = useState(null);
+  useSwipeDeck(deckEl, {
+    getDragEl: () => deckEl?.querySelector(".flip-card"),
+    onSwipe: (step) => move(step),
+  });
   return (
     <>
       <div className="section-head">
@@ -1628,9 +1725,9 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
       </div>
       {flashWord ? (
         <>
-          <div className="flip-scene" ref={flashSceneRef}>
+          <div className="flip-scene swipe-deck" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
             <div
-              className={`flip-card ${flash.flipped ? "flipped" : ""}`}
+              className={`flip-card swipe-target ${flash.flipped ? "flipped" : ""}`}
               data-flip
               tabIndex={0}
               onClick={() => setF({ flipped: !flash.flipped })}
@@ -1667,6 +1764,7 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
               →
             </button>
           </div>
+          <p className="swipe-hint">← 左右滑动切换卡片 · 点击翻面</p>
         </>
       ) : (
         <div className="empty glass">当前筛选下没有卡片，换一组条件试试。</div>
@@ -1678,6 +1776,13 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
 /* ---------- 记忆测试 ---------- */
 function QuizPage({ app, quizWord, quizCardRef, moveQuiz, nextQuestion }) {
   const { quiz, setQuiz, quizPool, quizSetup, setQuizSetup, startQuiz, answerQuiz, submitBlank, allWords, navigate, patchUser, setLib } = app;
+  /* 触摸：左右滑动切换题目（输入框内不拦截） */
+  const [deckEl, setDeckEl] = useState(null);
+  useSwipeDeck(deckEl, {
+    getDragEl: () => deckEl,
+    ignoreSelector: "input, textarea",
+    onSwipe: (step) => (step > 0 ? nextQuestion() : moveQuiz(-1)),
+  });
   if (!quiz) {
     return (
       <>
@@ -1773,7 +1878,7 @@ function QuizPage({ app, quizWord, quizCardRef, moveQuiz, nextQuestion }) {
           正确 {quiz.correct} · 错误 {quiz.wrong}
         </span>
       </div>
-      <div className="quiz-card glass" ref={quizCardRef} key={quiz.index}>
+      <div className="quiz-card glass swipe-deck swipe-target" ref={(el) => { quizCardRef.current = el; setDeckEl(el); }} key={quiz.index}>
         {mode === "blank" ? (
           <>
             <div className="prompt">{w?.meaning}</div>
