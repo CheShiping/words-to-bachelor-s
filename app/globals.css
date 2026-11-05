@@ -422,49 +422,27 @@ body.no-motion .page {
 .bottom-nav {
   display: none;
 }
-/* 花影开关（滑动开关 + 开/关字样） */
-.motion-toggle {
+/* 仓库入口：顶栏右上角的 GitHub 标志 */
+.gh-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  border-radius: 999px;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--chip-bg);
-  color: var(--muted);
-  font-size: 13px;
-  transition: box-shadow 0.2s ease, background 0.2s ease;
+  color: var(--ink-2);
+  transition: box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
-.motion-toggle:hover {
-  box-shadow: 0 8px 20px rgba(93, 61, 70, 0.14);
+.gh-btn:hover {
+  color: var(--plum);
+  background: var(--pink-soft);
+  box-shadow: 0 8px 20px rgba(93, 61, 70, 0.16);
+  transform: translateY(-1px);
 }
-.motion-toggle .motion-bloom {
-  color: var(--pink);
-  font-style: normal;
-}
-.motion-toggle .switch-track {
-  position: relative;
-  width: 34px;
-  height: 19px;
-  border-radius: 999px;
-  background: #e3d6d3;
-  transition: background 0.2s ease;
-}
-.motion-toggle .switch-track::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(58, 48, 51, 0.3);
-  transition: transform 0.2s ease;
-}
-.motion-toggle.on .switch-track { background: var(--pink); }
-.motion-toggle.on .switch-track::after { transform: translateX(15px); }
-.motion-toggle .motion-state { font-style: normal; min-width: 1.2em; }
+.gh-btn svg { display: block; }
 /* 明暗主题切换：两个图标由 data-theme 决定显示哪一个，避免水合差异 */
 .theme-btn {
   display: inline-flex;
@@ -1568,7 +1546,7 @@ body.quiz-custom-cursor * { cursor: none !important; }
   .pill:active,
   .round-btn:active,
   .icon-btn:active,
-  .motion-toggle:active,
+  .gh-btn:active,
   .option:active,
   .word-card:active,
   .journal-card:active,
@@ -1621,7 +1599,7 @@ body.quiz-custom-cursor * { cursor: none !important; }
   }
   .brand { font-size: 15px; }
   .nav { display: none; }
-  .motion-toggle { padding: 7px 11px; }
+  .gh-btn { width: 34px; height: 34px; }
   .icon-btn { padding: 7px 12px; }
 
   /* 页面容器 */
@@ -1770,7 +1748,6 @@ body.quiz-custom-cursor * { cursor: none !important; }
 /* --- 560px：常规手机 --- */
 @media (max-width: 560px) {
   .brand small { display: none; }
-  .motion-toggle .motion-label { display: none; }
   .topbar { height: 56px; }
   .main { padding-top: 20px; }
 
@@ -1961,13 +1938,6 @@ body.quiz-custom-cursor * { cursor: none !important; }
 [data-theme="dark"] .home-boot-action {
   background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 42%, var(--skeleton-a) 58%);
   background-size: 300% 100%;
-}
-[data-theme="dark"] .motion-toggle .switch-track {
-  background: rgba(255, 255, 255, 0.14);
-}
-[data-theme="dark"] .motion-toggle .switch-track::after {
-  background: #efe6e9;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 [data-theme="dark"] .to-top {
   background: var(--card-bg);

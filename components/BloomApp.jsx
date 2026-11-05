@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+const REPO_URL = "https://github.com/CheShiping/words-to-bachelor-s";
 const STORAGE_KEY = "wordsInBloomData";
 const PAGE_SIZE = 60;
 const CARD_SWITCH_EXIT_MS = 50;
@@ -67,7 +68,6 @@ const defaultUserData = () => ({
   dates: [],
   lastWordId: null,
   studyCollectionId: "all",
-  motion: true,
   quizCursor: true,
   pomodoro: { duration: 25, remaining: 1500, running: false, mode: "focus", endsAt: null },
 });
@@ -374,7 +374,8 @@ export default function BloomApp() {
   const loadedRef = useRef(false);
   const sectionRefs = useRef({});
   const quizCursorRef = useRef(null);
-  const motionEnabled = user.motion !== false;
+  // 动效常驻开启：不再提供开关，避免用户误关后界面失去花瓣与过渡
+  const motionEnabled = true;
 
   /* ---- 词库加载（对应原站 /api/catalog，这里改为静态 JSON） ---- */
   useEffect(() => {
@@ -982,11 +983,11 @@ export default function BloomApp() {
   /* ---- 重置 ---- */
   const resetAll = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
-    setUser({ ...defaultUserData(), motion: user.motion, quizCursor: user.quizCursor });
+    setUser({ ...defaultUserData(), quizCursor: user.quizCursor });
     setQuiz(null);
     setFlash((f) => ({ ...f, index: 0, flipped: false }));
     setModalOpen(false);
-  }, [user.motion, user.quizCursor]);
+  }, [user.quizCursor]);
 
   /* ---- 学习最新词集 / 随机 / 继续 ---- */
   const latestCollection = useMemo(
@@ -1147,19 +1148,18 @@ export default function BloomApp() {
                 ☾
               </span>
             </button>
-            <button
-              className={`motion-toggle ${motionEnabled ? "on" : ""}`}
-              onClick={() => patchUser((prev) => ({ ...prev, motion: !(prev.motion !== false) }))}
-              aria-pressed={motionEnabled}
-              aria-label="切换背景动画"
+            <a
+              className="gh-btn"
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label="打开 GitHub 仓库"
+              title="GitHub 仓库"
             >
-              <span className="motion-bloom" aria-hidden="true">
-                ✿
-              </span>
-              <span className="motion-label">花影</span>
-              <i className="switch-track" aria-hidden="true" />
-              <em className="motion-state">{motionEnabled ? "开" : "关"}</em>
-            </button>
+              <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+              </svg>
+            </a>
             <button className="icon-btn" onClick={() => setModalOpen(true)} aria-label="重置全部进度">
               重置
             </button>
