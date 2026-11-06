@@ -229,21 +229,26 @@ function CountUp({ value, suffix = "" }) {
 }
 
 /* ---------- WAAPI 卡片横向切换（50ms 出 / 70ms 入） ---------- */
-async function switchCard(getCurrent, commit, direction, isActivePage) {
+async function switchCard(getCurrent, commit, direction, isActivePage, startOffset = 0) {
   const current = getCurrent();
   if (!current || !current.animate || document.body.classList.contains("no-motion")) {
     commit();
     return;
   }
-  const exitX = direction > 0 ? "-8%" : "8%";
-  const enterX = direction > 0 ? "8%" : "-8%";
+  // 手指离开时卡片所在的位置作为离场起点，动画方向与滑动方向一致，不会先"退回去"
+  const width = current.getBoundingClientRect().width || 320;
+  const travel = Math.max(34, width * 0.08);
+  const sign = direction > 0 ? -1 : 1;
+  const exitFrom = startOffset;
+  const exitTo = startOffset + sign * Math.max(travel, Math.abs(startOffset) * 0.35);
+  const enterFrom = sign * -travel;
   current.style.pointerEvents = "none";
   let exit = null;
   let enter = null;
   exit = current.animate(
     [
-      { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
-      { opacity: 0, transform: `translate3d(${exitX},0,0) scale(0.985)` },
+      { opacity: 1, transform: `translate3d(${exitFrom}px,0,0) scale(1)` },
+      { opacity: 0, transform: `translate3d(${exitTo}px,0,0) scale(0.985)` },
     ],
     { duration: CARD_SWITCH_EXIT_MS, easing: "cubic-bezier(0.4,0,0.65,1)", fill: "forwards" },
   );
@@ -256,7 +261,7 @@ async function switchCard(getCurrent, commit, direction, isActivePage) {
     // 入场也带 forwards：记忆卡片的场景元素会被复用，必须撑到收尾再统一撤销
     enter = incoming.animate(
       [
-        { opacity: 0, transform: `translate3d(${enterX},0,0) scale(0.985)` },
+        { opacity: 0, transform: `translate3d(${enterFrom}px,0,0) scale(0.985)` },
         { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
       ],
       { duration: CARD_SWITCH_ENTER_MS, easing: "cubic-bezier(0.2,0.72,0.25,1)", fill: "forwards" },
@@ -349,13 +354,31 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
       const dx = t.clientX - g.x;
       const dy = t.clientY - g.y;
       if (!g.dragging) return; // 普通点击，交给原有 onClick
+      const committed = Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy);
       const el = dragEl();
-      if (el) {
-        el.classList.remove("is-swiping");
+      const clearOffset = (instant) => {
+        if (!el) return;
+        if (instant) el.style.transitionDuration = "0ms";
         el.classList.remove("has-offset");
         el.style.removeProperty("--swipe-x");
         el.style.removeProperty("--swipe-rot");
         el.style.removeProperty("--swipe-o");
+        if (instant) {
+          requestAnimationFrame(() => {
+            el.style.transitionDuration = "";
+            el.classList.remove("is-swiping");
+          });
+        }
+      };
+      if (el) {
+        if (committed) {
+          // 提交切换：立即归位，离场动画从同一个偏移量接管，视觉上无缝衔接
+          clearOffset(true);
+        } else {
+          // 未提交：平滑回弹到原位
+          el.classList.remove("is-swiping");
+          clearOffset(false);
+        }
       }
       // 滑动结束后浏览器会补发 click，这里短暂截断一次，避免误触卡片里的按钮
       const swallow = (ev) => {
@@ -364,9 +387,7 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
       };
       deckEl.addEventListener("click", swallow, { capture: true });
       setTimeout(() => deckEl.removeEventListener("click", swallow, { capture: true }), 400);
-      if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) {
-        swipeRef.current?.(dx < 0 ? 1 : -1);
-      }
+      if (committed) swipeRef.current?.(dx < 0 ? 1 : -1, dx * 0.55);
     };
 
     deckEl.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -789,7 +810,7 @@ export default function BloomApp() {
   }, [quizWord, answerQuiz]);
 
   const stepQuiz = useCallback(
-    (target, direction) => {
+    (target, direction, offset = 0) => {
       if (!quiz || quiz.done || quizBusy || target === quiz.index) return;
       switchCard(
         () => quizCardRef.current,
@@ -800,23 +821,27 @@ export default function BloomApp() {
           }),
         direction,
         () => page === "quiz",
+        offset,
       ).then(() => setQuizBusy(false));
       setQuizBusy(true);
     },
     [quiz, quizBusy, page],
   );
   const moveQuiz = useCallback(
-    (step) => {
+    (step, offset = 0) => {
       if (!quiz) return;
-      stepQuiz(clamp(quiz.index + step, 0, quiz.items.length - 1), step);
+      stepQuiz(clamp(quiz.index + step, 0, quiz.items.length - 1), step, offset);
     },
     [quiz, stepQuiz],
   );
-  const nextQuestion = useCallback(() => {
-    if (!quiz) return;
-    if (quiz.index >= quiz.items.length - 1) setQuiz((q) => ({ ...q, done: true }));
-    else stepQuiz(quiz.index + 1, 1);
-  }, [quiz, stepQuiz]);
+  const nextQuestion = useCallback(
+    (offset = 0) => {
+      if (!quiz) return;
+      if (quiz.index >= quiz.items.length - 1) setQuiz((q) => ({ ...q, done: true }));
+      else stepQuiz(quiz.index + 1, 1, offset);
+    },
+    [quiz, stepQuiz],
+  );
   moveQuizRef.current = moveQuiz;
   nextQuestionRef.current = nextQuestion;
 
@@ -1639,7 +1664,7 @@ function StudyPage({ app, studyCardRef }) {
   // 切换动画进行中忽略新的切换，避免连续滑动叠加多层动画造成抖动
   const busyRef = useRef(false);
   const move = useCallback(
-    (step) => {
+    (step, offset = 0) => {
       if (!pool.length || busyRef.current) return;
       busyRef.current = true;
       const pos = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
@@ -1651,6 +1676,7 @@ function StudyPage({ app, studyCardRef }) {
         },
         step,
         () => document.body.dataset.page === "study",
+        offset,
       ).finally(() => {
         busyRef.current = false;
       });
@@ -1662,11 +1688,11 @@ function StudyPage({ app, studyCardRef }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word?.id]);
 
-  /* 触摸：左右滑动切换单词 */
+  /* 触摸：左右滑动切换单词（拖动卡片本身，离场动画从手指位置继续） */
   const [deckEl, setDeckEl] = useState(null);
   useSwipeDeck(deckEl, {
-    getDragEl: () => deckEl,
-    onSwipe: (step) => move(step),
+    getDragEl: () => deckEl?.querySelector(".study-card"),
+    onSwipe: (step, offset) => move(step, offset),
   });
   if (!pool.length) {
     return (
@@ -1699,12 +1725,12 @@ function StudyPage({ app, studyCardRef }) {
           ))}
         </select>
       </div>
-      <div className="study-stage swipe-deck swipe-target" ref={(el) => { studyCardRef.current = el; setDeckEl(el); }}>
+      <div className="study-stage swipe-deck" ref={(el) => { studyCardRef.current = el; setDeckEl(el); }}>
         <button className="round-btn" onClick={() => move(-1)} aria-label="上一个">
           ←
         </button>
         {word && (
-          <div className="study-card glass" key={word.id}>
+          <div className="study-card glass swipe-target" key={word.id}>
             <div className="badges">
               <span className="badge">{word.category}</span>
               <span className="badge num">#{word.number}</span>
@@ -1748,7 +1774,7 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
   // 同 StudyPage：动画进行中忽略新的切换，防止连续滑动手势叠加动画
   const busyRef = useRef(false);
   const move = useCallback(
-    (step) => {
+    (step, offset = 0) => {
       if (!flashPool.length || busyRef.current) return;
       busyRef.current = true;
       const nextIndex = (flash.index + step + flashPool.length) % flashPool.length;
@@ -1757,6 +1783,7 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
         () => setFlash((f) => ({ ...f, index: nextIndex, flipped: false })),
         step,
         () => document.body.dataset.page === "flash",
+        offset,
       ).finally(() => {
         busyRef.current = false;
       });
@@ -1768,11 +1795,11 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [move]);
 
-  /* 触摸：左右滑动切换卡片（与沉浸学习一致：拖动容器、动画卡片） */
+  /* 触摸：左右滑动切换卡片（与沉浸学习一致：拖动卡片本身） */
   const [deckEl, setDeckEl] = useState(null);
   useSwipeDeck(deckEl, {
-    getDragEl: () => deckEl,
-    onSwipe: (step) => move(step),
+    getDragEl: () => deckEl?.querySelector(".flip-card"),
+    onSwipe: (step, offset) => move(step, offset),
   });
   return (
     <>
@@ -1810,10 +1837,10 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
       </div>
       {flashWord ? (
         <>
-          <div className="flip-scene swipe-deck swipe-target" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
+          <div className="flip-scene swipe-deck" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
             <div
               key={flash.index}
-              className={`flip-card ${flash.flipped ? "flipped" : ""}`}
+              className={`flip-card swipe-target ${flash.flipped ? "flipped" : ""}`}
               data-flip
               tabIndex={0}
               onClick={() => setF({ flipped: !flash.flipped })}
@@ -1867,7 +1894,7 @@ function QuizPage({ app, quizWord, quizCardRef, moveQuiz, nextQuestion }) {
   useSwipeDeck(deckEl, {
     getDragEl: () => deckEl,
     ignoreSelector: "input, textarea",
-    onSwipe: (step) => (step > 0 ? nextQuestion() : moveQuiz(-1)),
+    onSwipe: (step, offset) => (step > 0 ? nextQuestion(offset) : moveQuiz(-1, offset)),
   });
   if (!quiz) {
     return (
