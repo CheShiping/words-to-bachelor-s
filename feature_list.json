@@ -1,0 +1,116 @@
+{
+  "features": [
+    {
+      "id": "feat-001",
+      "name": "词库构建管线",
+      "description": "scripts/build_catalog.py 解析 docs/2027专升本零基础3500词汇.md，清洗修复后生成 public/data/catalog.json（3,289 词）",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "npm run catalog 可复现；init.sh 词库一致性检查通过"
+    },
+    {
+      "id": "feat-002",
+      "name": "词典库",
+      "description": "3,289 词按 33 组词集、词性、学习状态筛选，支持搜索、排序与分页",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "线上已发布 https://cheshiping.github.io/words-to-bachelor-s/"
+    },
+    {
+      "id": "feat-003",
+      "name": "沉浸学习",
+      "description": "一次一词：大字单词、音标、释义，学习/待复习/已掌握三档状态",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "线上已发布；切换链路收敛到 useCardDeck（见 AGENTS.md 不变式）"
+    },
+    {
+      "id": "feat-004",
+      "name": "记忆卡片",
+      "description": "点击翻面、左右滑动换卡，可按词集或状态单独抽卡",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "线上已发布；滑动链路收敛到 useCardDeck，横滚抖动问题已修复"
+    },
+    {
+      "id": "feat-005",
+      "name": "记忆测试",
+      "description": "看释义选单词、看单词选释义、拼写填空三种题型混合出题，答完给错题清单",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "线上已发布"
+    },
+    {
+      "id": "feat-006",
+      "name": "间隔复习",
+      "description": "答对累积、答错清零并重新排期，复习间隔从 4 小时递增到 30 天",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": "线上已发布"
+    },
+    {
+      "id": "feat-007",
+      "name": "移动端手势",
+      "description": "左右滑动切换单词、卡片与页面，底部导航常驻，触屏目标不小于 44px",
+      "dependencies": ["feat-004"],
+      "status": "done",
+      "evidence": "线上已发布"
+    },
+    {
+      "id": "feat-008",
+      "name": "明暗双主题",
+      "description": "夜樱暗色主题默认跟随系统偏好，顶栏可手动切换并记住选择",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "线上已发布"
+    },
+    {
+      "id": "feat-009",
+      "name": "进度自持",
+      "description": "状态、收藏、连续天数、测试成绩全部存 localStorage，无账号、无后端、不上传",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "线上已发布"
+    },
+    {
+      "id": "feat-010",
+      "name": "GitHub Pages 自动部署",
+      "description": "推送 main 自动构建发布，自动判定 NEXT_PUBLIC_BASE_PATH 并生成 out/.nojekyll",
+      "dependencies": ["feat-001"],
+      "status": "done",
+      "evidence": ".github/workflows/deploy.yml；线上地址可访问"
+    },
+    {
+      "id": "feat-011",
+      "name": "Agent harness",
+      "description": "AGENTS.md / feature_list.json / progress.md / init.sh / session-handoff.md 五件套就位并定制为本项目",
+      "dependencies": [],
+      "status": "done",
+      "evidence": "validate-harness.mjs 审计通过（见 progress.md 完成证据）"
+    },
+    {
+      "id": "feat-012",
+      "name": "多词书架构与旧进度迁移",
+      "description": "进度按词书分桶存储（books[bookId]），v2 单书进度自动迁移为 v3 且不丢状态；词书清单 index.json 驱动按需加载，顶层 activeBookId 记住当前词书",
+      "dependencies": ["feat-001", "feat-009"],
+      "status": "done",
+      "evidence": "components/userStorage.mjs + node scripts/check_migration.mjs 六组断言全通过；浏览器回归 41/41 通过（含 v2 迁移、分桶隔离、刷新记忆）"
+    },
+    {
+      "id": "feat-013",
+      "name": "真题核心词组词书数据接入",
+      "description": "scripts/build_books.py 统一构建 3500 词书 + 764 词组（39 页词集、标签派生分类、多义项合并、中英例句），生成 phrases-764.json 与词书清单；init.sh 扩展为三文件幂等校验",
+      "dependencies": ["feat-012"],
+      "status": "done",
+      "evidence": "764 条编号 1–764 连续、39 页、7 类分类；3500 词书 catalog.json 与改造前字节一致；./init.sh 三份数据 diff 幂等通过"
+    },
+    {
+      "id": "feat-014",
+      "name": "词书选择弹框与切换入口",
+      "description": "首访强制弹出选书弹框、浏览器记住选择；顶栏书名胶囊随时切换；切书软重启且各书进度独立；例句展示、首页学习路径按书显隐、词组书禁用拼写题",
+      "dependencies": ["feat-012", "feat-013"],
+      "status": "done",
+      "evidence": "浏览器 CDP 回归 44/44 通过（首访强制/Esc 无效/记忆/切书/例句/暗色/移动端/组件一致性/无 JS 异常），截图见 shots/book-picker/"
+    }
+  ]
+}

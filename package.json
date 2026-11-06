@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "npx serve out",
-    "catalog": "python scripts/build_catalog.py \"docs/2027专升本零基础3500词汇.md\" public/data/catalog.json"
+    "catalog": "python scripts/build_books.py"
   },
   "dependencies": {
     "gsap": "^3.13.0",

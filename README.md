@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/readme/hero.svg" width="100%" alt="词间日和 · Words in Bloom —— 专升本 3500 词学习应用，线上地址 cheshiping.github.io/words-to-bachelor-s">
+  <img src="./assets/readme/hero.svg" width="100%" alt="词间日和 · Words in Bloom —— 专升本双词书学习应用，线上地址 cheshiping.github.io/words-to-bachelor-s">
 </p>
 
 <p align="center">
@@ -11,12 +11,12 @@
   <img src="https://img.shields.io/badge/Next.js-15-b56f82?style=flat-square" alt="Next.js 15">
   <img src="https://img.shields.io/badge/React-19-b56f82?style=flat-square" alt="React 19">
   <img src="https://img.shields.io/badge/%E9%9D%99%E6%80%81%E5%AF%BC%E5%87%BA-out%2F-b56f82?style=flat-square" alt="静态导出到 out/">
-  <img src="https://img.shields.io/badge/%E8%AF%8D%E5%BA%93-3%2C289%20%E8%AF%8D-b56f82?style=flat-square" alt="3,289 个单词">
+  <img src="https://img.shields.io/badge/%E5%8F%8C%E8%AF%8D%E4%B9%A6-4%2C053%20%E6%9D%A1-b56f82?style=flat-square" alt="双词书，共 4,053 条">
 </p>
 
 <p align="center">
-  把《2027 专升本 3500 词》做成一间可以一直待下去的网页书房。<br>
-  无需登录，打开就能背；学习进度只写在你自己的浏览器里。
+  把《2027 专升本 3500 词》与《专升本真题核心词组》做成一间可以一直待下去的网页书房。<br>
+  打开先选词书，浏览器自动记住；无需登录，学习进度只写在你自己的浏览器里。
 </p>
 
 ---
@@ -36,10 +36,11 @@
 
 ## 能做什么
 
-- **词典库** —— 3,289 个单词按 33 组词集、词性、学习状态筛选，支持搜索、排序与分页。
-- **沉浸学习** —— 一次只面对一个词：大字、音标、释义，配 `学习 / 待复习 / 已掌握` 三档状态。
+- **双词书** —— 首次打开先选一本，浏览器自动记住；顶栏随时切换，每本书的进度、收藏与复习排期各自独立保留。
+- **词典库** —— 3500 词书 3,289 词 / 33 组词集；真题词组书 764 条 / 39 页，按标签分类筛选；支持搜索、排序与分页。
+- **沉浸学习** —— 一次只面对一个词：大字、音标、释义（词组书另配英文例句与中文译文），配 `学习 / 待复习 / 已掌握` 三档状态。
 - **记忆卡片** —— 点击翻面，左右滑动换卡；可单独按词集或状态抽卡。
-- **记忆测试** —— 看释义选单词、看单词选释义、拼写填空三种题型混合出题，答完给错题清单。
+- **记忆测试** —— 看释义选单词、看单词选释义、拼写填空三种题型混合出题（词组书只出中英互测），答完给错题清单。
 - **间隔复习** —— 答对累积、答错清零并重新排期，复习时间从 4 小时递增到 30 天。
 - **移动端手势** —— 左右滑动切换单词、卡片乃至整个页面，底部导航常驻，触屏目标均不小于 44px。
 - **明暗双主题** —— 夜樱模式默认跟随系统偏好，也可在顶栏手动切换并记住选择。
@@ -62,6 +63,15 @@
 
 > 原书 3500 个序号中，1492–1499 在原文里写作 `149 2`、`149 3`，2201–2300 与 3001–3100 则整段缺失，最终收录 3,289 个单词。
 
+词组书由同一个脚本的 `parse_phrases()` 解析 `docs/专升本真题核心词组.md` 的 4 列表格：
+
+- 按原书 **39 页**分节，764 条编号 1–764 逐条校验（列数、编号连续、例句必须是英文 + 中文两行）；
+- 多义项的 `<br>` 合并成中文分号，避免把 HTML 带进界面；
+- 从 `usage. / phrv. / idm. / collocation.` 等标签派生 7 类分类，供词典库筛选；
+- 例句拆成 `exampleEn / exampleZh` 两个字段；Word 列里的 `(sb)`、`…` 原样保留，这是真题原形态。
+
+三份数据（3500 词书、词组书、词书清单）都由 `npm run catalog` 确定性生成，`init.sh` 会重新生成后逐文件 diff 做幂等校验。前端只先取几 KB 的清单，再按用户选择拉取对应词书，加第三本书无需改前端代码。
+
 ## 快速开始
 
 ```bash
@@ -76,17 +86,22 @@ npm run build    # 静态产物输出到 out/
 npm run start    # 用 npx serve 预览 out/
 ```
 
-重新生成词库（需 Python 3）：
+重新生成全部词书（需 Python 3）：
 
 ```bash
-npm run catalog
+npm run catalog                      # = python scripts/build_books.py
+node scripts/check_migration.mjs     # 改动进度存储后跑一次回归（6 组断言）
 ```
 
-脚本会解析 `docs/2027专升本零基础3500词汇.md`，输出 `public/data/catalog.json`。也可以显式指定路径：
+`scripts/build_books.py` 输出三份文件，生成结果确定性可复现：
 
-```bash
-python scripts/build_catalog.py "docs/2027专升本零基础3500词汇.md" public/data/catalog.json
+```text
+public/data/catalog.json                3500 词书（3,289 词）
+public/data/books/phrases-764.json      真题核心词组（764 条）
+public/data/books/index.json            词书清单（元信息 + 能力开关 + dataUrl）
 ```
+
+新增词书只需在这个脚本里加一个解析函数、一个 JSON 与一条清单记录，前端完全由清单驱动，无需改动。
 
 ## 部署
 
@@ -108,10 +123,10 @@ npm run build
 
 ```text
 app/                 页面与全局样式（App Router）
-components/          BloomApp.jsx —— 单文件应用主体
-public/data/         catalog.json（3,289 词）
-docs/                词表原文 Markdown
-scripts/             build_catalog.py —— 词库解析器
+components/          BloomApp.jsx（应用主体）、userStorage.mjs（进度分桶与 v2→v3 迁移）
+public/data/         catalog.json（3500 词书）+ books/（词组书 JSON 与 index.json 清单）
+docs/                两份词表原文 Markdown
+scripts/             build_books.py（多词书管线）、check_migration.mjs（存储回归）
 assets/readme/       README 配图（SVG + WebP）
 out/                 npm run build 的静态产物
 ```

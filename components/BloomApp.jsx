@@ -10,10 +10,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import gsap from "gsap";
+import {
+  STORAGE_KEY,
+  defaultUserData,
+  loadLocalUser,
+  serializeUser,
+  switchBookState,
+  resetUser,
+  bookProgress,
+} from "./userStorage.mjs";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const REPO_URL = "https://github.com/CheShiping/words-to-bachelor-s";
-const STORAGE_KEY = "wordsInBloomData";
 const PAGE_SIZE = 60;
 const CARD_SWITCH_EXIT_MS = 50;
 const CARD_SWITCH_ENTER_MS = 70;
@@ -27,6 +35,33 @@ const PAGES = [
   ["favorites", "收藏夹", "♡"],
 ];
 const STATUS_LABEL = { new: "未学", learning: "学习中", review: "待复习", mastered: "已掌握" };
+
+/* 词书清单加载失败时的兜底：至少保证 3500 词书可用，不让整站白屏。
+   清单正常时完全以 public/data/books/index.json 为准。 */
+const FALLBACK_BOOKS = {
+  defaultBookId: "words-3500",
+  books: [
+    {
+      id: "words-3500",
+      name: "2027 专升本零基础 3500 词",
+      shortName: "3500 词",
+      subtitle: "从零起步的核心词汇",
+      description: "按原书 33 组词集编排，含音标、词性与基础/进阶/高分难度分区。",
+      dataUrl: "/data/catalog.json",
+      wordCount: 3289,
+      collectionCount: 33,
+      hasSections: true,
+      spellingEnabled: true,
+      categoryLabel: "全部词性",
+      accent: "pink",
+      order: 1,
+    },
+  ],
+};
+
+const DEFAULT_LIB = { collection: "all", category: "all", status: "all", sort: "original", keyword: "", seed: 1, page: 0 };
+const DEFAULT_FLASH = { collection: "all", status: "all", sort: "original", seed: 1, index: 0, flipped: false };
+const DEFAULT_QUIZ_SETUP = { collection: "all", category: "all", status: "all", count: 20 };
 
 /* ---------- 小工具 ---------- */
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -62,28 +97,9 @@ const beijingParts = () => {
   return { date: m ? `${m[1]} · ${m[2]}` : date, time };
 };
 
-/* ---------- 用户数据 ---------- */
-const defaultUserData = () => ({
-  v: 2,
-  words: {}, // id -> { status, favorite, reviewAt, correctStreak }
-  dates: [],
-  lastWordId: null,
-  studyCollectionId: "all",
-  quizCursor: true,
-  pomodoro: { duration: 25, remaining: 1500, running: false, mode: "focus", endsAt: null },
-});
-const loadLocalUser = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultUserData();
-    const parsed = JSON.parse(raw);
-    // 词库已从考研切换为专升本，旧进度与新的词条 id 不匹配，直接重置
-    if (!parsed || parsed.v !== defaultUserData().v) return defaultUserData();
-    return { ...defaultUserData(), ...parsed, pomodoro: { ...defaultUserData().pomodoro, ...(parsed.pomodoro || {}) } };
-  } catch {
-    return defaultUserData();
-  }
-};
+/* ---------- 用户数据 ----------
+ * 存储形状（按词书分桶）、v2 → v3 迁移与序列化全部收敛在 userStorage.mjs，
+ * 这里只保留从「当前书扁平视图」派生状态的纯函数。 */
 const wordState = (user, id) => user.words[id] || {};
 const withStatus = (user, word) => {
   const ws = user.words[word.id];
@@ -450,50 +466,86 @@ function useCardDeck({ containerRef, cardSelector, pool, index, activePage, comm
  * 主组件
  * ============================================================ */
 export default function BloomApp() {
-  const [catalog, setCatalog] = useState(null);
+  const [catalog, setCatalog] = useState(null); // 当前词书数据：{ bookId, meta, collections, words }
+  const [books, setBooks] = useState(null); // 词书清单 manifest
   const [bootError, setBootError] = useState("");
   const [user, setUser] = useState(defaultUserData);
   const [page, setPage] = useState("home");
   const [modalOpen, setModalOpen] = useState(false);
+  const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const [clock, setClock] = useState({ date: "", time: "--:--:--" });
   const [, setTick] = useState(0); // 番茄钟/时钟每秒重绘
   const [showTop, setShowTop] = useState(false);
 
-  const [lib, setLib] = useState({ collection: "all", category: "all", status: "all", sort: "original", keyword: "", seed: 1, page: 0 });
-  const [flash, setFlash] = useState({ collection: "all", status: "all", sort: "original", seed: 1, index: 0, flipped: false });
-  const [quizSetup, setQuizSetup] = useState({ collection: "all", category: "all", status: "all", count: 20 });
+  const [lib, setLib] = useState(DEFAULT_LIB);
+  const [flash, setFlash] = useState(DEFAULT_FLASH);
+  const [quizSetup, setQuizSetup] = useState(DEFAULT_QUIZ_SETUP);
   const [quiz, setQuiz] = useState(null);
 
-  const loadedRef = useRef(false);
+  // 首访（还没有 activeBookId）强制选书；之后只由顶栏主动打开
+  const needPick = !!books && !user.activeBookId;
+  const spellingEnabled = catalog?.meta?.spellingEnabled !== false;
+
+  // 进度从 localStorage 读回之前禁止写回，避免首帧用空数据覆盖真实进度（也避免水合不匹配）
+  const [hydrated, setHydrated] = useState(false);
   const sectionRefs = useRef({});
   const quizCursorRef = useRef(null);
   // 动效常驻开启：不再提供开关，避免用户误关后界面失去花瓣与过渡
   const motionEnabled = true;
 
-  /* ---- 词库加载（对应原站 /api/catalog，这里改为静态 JSON） ---- */
+  /* ---- 词书清单 + 当前词书加载（静态 JSON，无后端） ----
+   * 清单只存元信息（几 KB），词书正文按 activeBookId 按需拉取；
+   * 以后加第三本书 = 往清单加一条 + 放一个 JSON，这里不用改。 */
   useEffect(() => {
     let alive = true;
-    fetch(`${BASE_PATH}/data/catalog.json`, { cache: "no-store" })
+    fetch(`${BASE_PATH}/data/books/index.json`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((payload) => alive && setCatalog({ collections: payload.collections, words: payload.words }))
-      .catch((err) => alive && setBootError(String(err.message || err)));
+      .then((manifest) => {
+        if (!alive) return;
+        if (!manifest?.books?.length) throw new Error("empty manifest");
+        setBooks(manifest);
+      })
+      .catch(() => alive && setBooks(FALLBACK_BOOKS));
     return () => {
       alive = false;
     };
   }, []);
 
+  useEffect(() => {
+    if (!books || !user.activeBookId) return;
+    const meta = books.books.find((b) => b.id === user.activeBookId);
+    if (!meta) {
+      // 保存的词书已被移除：清空选择，重新弹出选书框
+      setUser((prev) => ({ ...prev, activeBookId: null }));
+      return;
+    }
+    let alive = true;
+    setCatalog(null);
+    setBootError("");
+    fetch(`${BASE_PATH}${meta.dataUrl}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((payload) => {
+        if (!alive) return;
+        if (!payload?.words?.length) throw new Error("empty catalog");
+        setCatalog({ collections: payload.collections, words: payload.words, bookId: meta.id, meta });
+      })
+      .catch((err) => alive && setBootError(String(err.message || err)));
+    return () => {
+      alive = false;
+    };
+  }, [books, user.activeBookId]);
+
   /* ---- 本地持久化 ---- */
   useEffect(() => {
-    setUser(loadLocalUser());
-    loadedRef.current = true;
+    setUser(loadLocalUser().user);
+    setHydrated(true);
   }, []);
   useEffect(() => {
-    if (loadedRef.current) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      } catch {}
-    }
-  }, [user]);
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeUser(user)));
+    } catch {}
+  }, [user, hydrated]);
 
   const patchUser = useCallback((fn) => setUser((prev) => fn(prev)), []);
 
@@ -701,9 +753,16 @@ export default function BloomApp() {
   useEffect(() => {
     const onKey = (e) => {
       const typing = /INPUT|SELECT|TEXTAREA/.test(e.target.tagName);
-      if (e.key === "Escape" && modalOpen) {
-        setModalOpen(false);
-        return;
+      if (e.key === "Escape") {
+        if (needPick) return; // 首访强制选书，弹框不可关闭
+        if (bookPickerOpen) {
+          setBookPickerOpen(false);
+          return;
+        }
+        if (modalOpen) {
+          setModalOpen(false);
+          return;
+        }
       }
       if (typing) {
         if (e.key === "Enter" && e.target.id === "blankAnswer") document.getElementById("submitBlank")?.click();
@@ -737,7 +796,7 @@ export default function BloomApp() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [page, quiz, modalOpen, user.lastWordId, updateWordStatus, toggleFavorite]);
+  }, [page, quiz, modalOpen, needPick, bookPickerOpen, user.lastWordId, updateWordStatus, toggleFavorite]);
 
   /* ---- 沉浸学习 ---- */
   const studyPoolRef = useRef([]);
@@ -776,11 +835,12 @@ export default function BloomApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, allWords, quizSetup.collection, quizSetup.category, quizSetup.status]);
 
+  const quizModes = useMemo(() => (spellingEnabled ? ["cn-en", "en-cn", "blank"] : ["cn-en", "en-cn"]), [spellingEnabled]);
   const startQuiz = useCallback(() => {
     if (!quizPool.length) return;
     const picked = shuffled(quizPool).slice(0, clamp(quizSetup.count, 5, 50));
     const items = picked.map((w) => {
-      const mode = ["cn-en", "en-cn", "blank"][Math.floor(Math.random() * 3)];
+      const mode = quizModes[Math.floor(Math.random() * quizModes.length)];
       if (mode === "blank") return { wordId: w.id, mode };
       const distractors = shuffled(quizPool.filter((x) => x.id !== w.id)).slice(0, 3);
       const choices = shuffled([w, ...distractors]);
@@ -792,7 +852,7 @@ export default function BloomApp() {
     });
     setQuiz({ items, index: 0, records: items.map(() => null), correct: 0, wrong: 0, done: false, answered: false, selected: null, revealed: false });
     navigate("quiz");
-  }, [quizPool, quizSetup.count, navigate]);
+  }, [quizPool, quizSetup.count, quizModes, navigate]);
 
   const quizWord = quiz && !quiz.done ? allWords.find((w) => w.id === quiz.items[quiz.index]?.wordId) : null;
 
@@ -1041,12 +1101,37 @@ export default function BloomApp() {
 
   /* ---- 重置 ---- */
   const resetAll = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setUser({ ...defaultUserData(), quizCursor: user.quizCursor });
+    setUser(resetUser(user));
     setQuiz(null);
-    setFlash((f) => ({ ...f, index: 0, flipped: false }));
+    setFlash(DEFAULT_FLASH);
+    setLib(DEFAULT_LIB);
+    setQuizSetup(DEFAULT_QUIZ_SETUP);
     setModalOpen(false);
-  }, [user.quizCursor]);
+  }, [user]);
+
+  /* ---- 词书选择 ----
+   * 之后由顶栏主动打开 bookPickerOpen，可随时关闭。 */
+  const switchBook = useCallback(
+    (bookId) => {
+      if (!books?.books.some((b) => b.id === bookId)) return;
+      if (bookId === user.activeBookId) {
+        setBookPickerOpen(false);
+        return;
+      }
+      // 软重启：进度已按书存档，切换零损失，不弹二次确认
+      setQuiz(null);
+      setLib(DEFAULT_LIB);
+      setFlash(DEFAULT_FLASH);
+      setQuizSetup(DEFAULT_QUIZ_SETUP);
+      setCatalog(null);
+      setBootError("");
+      setBookPickerOpen(false);
+      setPage("home");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setUser((prev) => switchBookState(prev, bookId));
+    },
+    [books, user.activeBookId],
+  );
 
   /* ---- 学习最新词集 / 随机 / 继续 ---- */
   const latestCollection = useMemo(
@@ -1071,12 +1156,20 @@ export default function BloomApp() {
 
   const app = {
     catalog,
+    books,
+    bookMeta: catalog?.meta || null,
     user,
     allWords,
     categories,
     stats,
     navigate,
     patchUser,
+    bookProgress,
+    switchBook,
+    needPick,
+    spellingEnabled,
+    bookPickerOpen,
+    setBookPickerOpen,
     setWordState,
     updateWordStatus,
     toggleFavorite,
@@ -1187,6 +1280,12 @@ export default function BloomApp() {
             {navButtons("top")}
           </nav>
           <div className="tools">
+            <button className="book-switch-btn" onClick={() => setBookPickerOpen(true)} aria-label="切换词书" title="切换词书">
+              <span className="book-switch-icon" aria-hidden="true">册</span>
+              <span className="book-switch-name">
+                {catalog?.meta?.shortName || books?.books.find((b) => b.id === user.activeBookId)?.shortName || "选择词书"}
+              </span>
+            </button>
             <button
               className="theme-btn"
               onClick={() => {
@@ -1242,7 +1341,7 @@ export default function BloomApp() {
         </main>
         <div className="app-status-row">
           <div className="sync-status" data-state={catalog ? (bootError ? "error" : "connected") : "connecting"} role="status">
-            {bootError ? "词库加载失败 · 请刷新重试" : catalog ? "静态版已就绪 · 进度保存在此浏览器" : "正在整理今天的学习书桌…"}
+            {bootError ? "词库加载失败 · 请刷新重试" : catalog ? `静态版已就绪 · ${catalog.meta?.shortName || "词书"} · 进度保存在此浏览器` : "正在整理今天的学习书桌…"}
           </div>
         </div>
         <div className="footer-whisper">A word revisited becomes a word remembered.</div>
@@ -1284,6 +1383,7 @@ export default function BloomApp() {
           </div>
         </div>
       </div>
+      <BookPicker app={app} />
     </>
   );
 }
@@ -1293,6 +1393,97 @@ const formatPomodoro = (seconds) => {
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 };
+
+/* ---------- 词书选择弹框 ----------
+ * 首访 needPick = true：必须选一本才能进应用，无关闭按钮、Esc 与遮罩都无效；
+ * 之后由顶栏主动打开，可随时关闭。进度条让「浏览器已记住」这件事可见。 */
+function BookPicker({ app }) {
+  const { books, user, bookProgress, switchBook, needPick, bookPickerOpen, setBookPickerOpen } = app;
+  const open = needPick || bookPickerOpen;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setVisible(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+  if (!open || !books) return null;
+  const list = [...books.books].sort((a, b) => (a.order || 0) - (b.order || 0));
+  return (
+    <div
+      className={`modal book-picker-modal ${visible ? "show" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bookPickerTitle"
+      onClick={(e) => {
+        if (!needPick && e.target === e.currentTarget) setBookPickerOpen(false);
+      }}
+    >
+      <div className="book-picker dialog glass">
+        <div className="book-picker-head">
+          <div className="eyebrow">WORDS IN BLOOM · 词书</div>
+          <h3 id="bookPickerTitle">{needPick ? "选择今天要读的词书" : "切换词书"}</h3>
+          <p>
+            {needPick
+              ? "选一本开始吧，浏览器会记住你的选择，下次打开直接进入这一本。"
+              : "每本书的学习进度、收藏与复习排期各自独立保留，随时可以切回来。"}
+          </p>
+        </div>
+        <div className="book-list">
+          {list.map((b, i) => {
+            const active = user.activeBookId === b.id;
+            const p = bookProgress(user, b.id, b.wordCount);
+            return (
+              <button
+                key={b.id}
+                className={`book-card glass journal-card ${active ? "active" : ""}`}
+                onClick={() => switchBook(b.id)}
+                aria-label={`选择词书：${b.name}`}
+              >
+                <span className="kicker">
+                  BOOK {String(i + 1).padStart(2, "0")} · {b.subtitle}
+                </span>
+                <span className="book-card-body">
+                  <span className="book-card-top">
+                    <b className="book-card-title">{b.name}</b>
+                    {active ? <em className="badge book-current">正在使用</em> : null}
+                  </span>
+                  <span className="muted book-card-desc">{b.description}</span>
+                  <span className="book-card-meta">
+                    <span className={`badge ${b.accent === "gold" ? "collection" : ""}`}>{b.wordCount} 条</span>
+                    <span className="badge num">{b.collectionCount} 个词集</span>
+                  </span>
+                  <span className="book-progress-row">
+                    <span className="path-bar">
+                      <i style={{ width: `${p.percent}%` }} />
+                    </span>
+                    <span className="book-progress-text">
+                      已学 {p.learned} / {p.total} · {p.percent}%
+                    </span>
+                  </span>
+                </span>
+                <span className="card-actions">
+                  <span className={`pill book-card-cta ${active ? "is-current" : ""}`}>
+                    {active ? "继续这一本" : "选这本"} <span aria-hidden="true">→</span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {!needPick ? (
+          <div className="book-picker-foot">
+            <button className="pill" onClick={() => setBookPickerOpen(false)}>
+              返回当前词书
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 /* ---------- 启动骨架屏 ---------- */
 function BootHome({ clock, bootError }) {
@@ -1511,28 +1702,30 @@ function HomePage({ app }) {
             </button>
           </div>
         </div>
-        <div className="journal-card glass">
-          <div className="kicker">A Quiet Path</div>
-          <h3>长期学习路径</h3>
-          <div className="path-row">
-            {sectionProgress.map((s) => (
-              <div className="path-item" key={s.section}>
-                <span>{s.section}</span>
-                <div className="path-bar">
-                  <i style={{ width: `${s.pct}%` }} />
+        {app.bookMeta?.hasSections !== false ? (
+          <div className="journal-card glass">
+            <div className="kicker">A Quiet Path</div>
+            <h3>长期学习路径</h3>
+            <div className="path-row">
+              {sectionProgress.map((s) => (
+                <div className="path-item" key={s.section}>
+                  <span>{s.section}</span>
+                  <div className="path-bar">
+                    <i style={{ width: `${s.pct}%` }} />
+                  </div>
+                  <b>
+                    {s.learned}/{s.total}
+                  </b>
                 </div>
-                <b>
-                  {s.learned}/{s.total}
-                </b>
-              </div>
-            ))}
+              ))}
+            </div>
+            <div className="card-actions">
+              <button className="pill" onClick={() => { app.setLib((f) => ({ ...f, collection: "all", page: 0 })); navigate("library"); }}>
+                打开词典库
+              </button>
+            </div>
           </div>
-          <div className="card-actions">
-            <button className="pill" onClick={() => { app.setLib((f) => ({ ...f, collection: "all", page: 0 })); navigate("library"); }}>
-              打开词典库
-            </button>
-          </div>
-        </div>
+        ) : null}
       </div>
     </>
   );
@@ -1569,8 +1762,8 @@ function LibraryPage({ app }) {
             </option>
           ))}
         </select>
-        <select className="field" value={lib.category} onChange={(e) => setPage({ category: e.target.value, page: 0 })} aria-label="按词性筛选">
-          <option value="all">全部词性</option>
+        <select className="field" value={lib.category} onChange={(e) => setPage({ category: e.target.value, page: 0 })} aria-label="按分类筛选">
+          <option value="all">{app.bookMeta?.categoryLabel || "全部词性"}</option>
           {categories.map((c) => (
             <option key={c} value={c}>
               {c}
@@ -1725,6 +1918,12 @@ function StudyPage({ app, studyCardRef, moveRef }) {
             <h2 className="study-word">{word.word}</h2>
             {word.phonetic ? <p className="phonetic">{phoneticOf(word)}</p> : null}
             <p className="study-meaning">{word.meaning}</p>
+            {word.exampleEn ? (
+              <div className="example-block">
+                <p className="example-en">{word.exampleEn}</p>
+                <p className="example-zh">{word.exampleZh}</p>
+              </div>
+            ) : null}
             <div className="study-actions">
               <button className={`pill ${word.status === "learning" ? "on" : ""}`} onClick={() => updateWordStatus(word.id, "learning")}>
                 学习中
@@ -1831,6 +2030,12 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool, moveRef }) {
                   <span className="badge collection">{flashWord.collectionTitle}</span>
                   <h2 className="flip-word">{flashWord.word}</h2>
                   <p className="flip-meaning">{flashWord.meaning}</p>
+                  {flashWord.exampleEn ? (
+                    <div className="example-block compact">
+                      <p className="example-en">{flashWord.exampleEn}</p>
+                      <p className="example-zh">{flashWord.exampleZh}</p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -1901,7 +2106,7 @@ function QuizPage({ app, quizWord, quizCardRef, moveQuiz, nextQuestion }) {
               <option value={30}>30 题</option>
             </select>
           </div>
-          <p className="hint">本组共 {quizPool.length} 个可选单词 · 中英互测与拼写混合出题 · 同一单词连续答对两次即标记「已掌握」，答错则清零并安排复习。</p>
+          <p className="hint">本组共 {quizPool.length} 个可选词条 · {app.spellingEnabled ? "中英互测与拼写混合出题" : "中英互测（词组书不出拼写题）"} · 同一词条连续答对两次即标记「已掌握」，答错则清零并安排复习。</p>
           <div>
             <button className="pill primary" onClick={startQuiz} disabled={!quizPool.length}>
               开始测试
