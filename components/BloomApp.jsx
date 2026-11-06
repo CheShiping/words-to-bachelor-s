@@ -238,7 +238,9 @@ async function switchCard(getCurrent, commit, direction, isActivePage) {
   const exitX = direction > 0 ? "-8%" : "8%";
   const enterX = direction > 0 ? "8%" : "-8%";
   current.style.pointerEvents = "none";
-  const exit = current.animate(
+  let exit = null;
+  let enter = null;
+  exit = current.animate(
     [
       { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
       { opacity: 0, transform: `translate3d(${exitX},0,0) scale(0.985)` },
@@ -251,29 +253,42 @@ async function switchCard(getCurrent, commit, direction, isActivePage) {
     commit();
     const incoming = getCurrent();
     if (!incoming) return;
-    await incoming
-      .animate(
-        [
-          { opacity: 0, transform: `translate3d(${enterX},0,0) scale(0.985)` },
-          { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
-        ],
-        { duration: CARD_SWITCH_ENTER_MS, easing: "cubic-bezier(0.2,0.72,0.25,1)" },
-      )
-      .finished.catch(() => {});
+    // 入场也带 forwards：记忆卡片的场景元素会被复用，必须撑到收尾再统一撤销
+    enter = incoming.animate(
+      [
+        { opacity: 0, transform: `translate3d(${enterX},0,0) scale(0.985)` },
+        { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
+      ],
+      { duration: CARD_SWITCH_ENTER_MS, easing: "cubic-bezier(0.2,0.72,0.25,1)", fill: "forwards" },
+    );
+    await enter.finished.catch(() => {});
   } finally {
-    if (getCurrent()) getCurrent().style.pointerEvents = "";
+    // forwards 填充不会自动移除。若元素被复用（.flip-scene 没有 key），
+    // 离场动画会把 opacity 永久钉在 0 —— 卡片看起来"消失"了。
+    if (exit) exit.cancel();
+    if (enter) enter.cancel();
+    const now = getCurrent();
+    if (now) now.style.pointerEvents = "";
   }
 }
 
 /* ---------- 触摸滑动：左右滑动切换卡片 ---------- */
-function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelector = "" } = {}) {
+// 卡片区最近一次手势的时间戳。卡片容器在回弹过渡中时几何位置是偏的，
+// 仅靠命中测试判断会漏，用时间窗兜底：卡片刚滑过就不触发翻页。
+let lastCardGestureAt = 0;
+
+function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelector = "", ignoreZone, role = "card" } = {}) {
   const gesture = useRef(null);
   const swipeRef = useRef(onSwipe);
   const dragRef = useRef(getDragEl);
   const ignoreRef = useRef(ignoreSelector);
+  const zoneRef = useRef(ignoreZone);
+  const roleRef = useRef(role);
   swipeRef.current = onSwipe;
   dragRef.current = getDragEl;
   ignoreRef.current = ignoreSelector;
+  zoneRef.current = ignoreZone;
+  roleRef.current = role;
 
   useEffect(() => {
     if (!deckEl) return;
@@ -281,6 +296,13 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
 
     const onTouchStart = (e) => {
       if (e.touches.length !== 1) return;
+      const now = Date.now();
+      if (roleRef.current === "page") {
+        // 刚在卡片区滑过，这一下不算翻页
+        if (now - lastCardGestureAt < 400) return;
+      } else {
+        lastCardGestureAt = now;
+      }
       const ignore = ignoreRef.current;
       if (ignore) {
         // closest 会命中容器自身（.main 本身就是 swipe-deck），这里只排除真正的嵌套区域
@@ -288,6 +310,13 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
         if (hit && hit !== deckEl) return;
       }
       const t = e.touches[0];
+      // 卡片切换动画期间会临时 pointer-events:none，触摸会穿透到页面层，
+      // 这里再用几何范围兜一次：起点落在卡片区内就不触发翻页
+      const zone = zoneRef.current?.();
+      if (zone) {
+        const r = zone.getBoundingClientRect();
+        if (t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom) return;
+      }
       gesture.current = { x: t.clientX, y: t.clientY, dragging: false };
     };
 
@@ -703,7 +732,7 @@ export default function BloomApp() {
       if (!pool.length || flashBusy) return;
       const nextIndex = (flash.index + step + pool.length) % pool.length;
       switchCard(
-        () => flashSceneRef.current,
+        () => flashSceneRef.current?.querySelector(".flip-card"),
         () => setFlash((f) => ({ ...f, index: nextIndex, flipped: false })),
         step,
         () => page === "flash",
@@ -1050,8 +1079,10 @@ export default function BloomApp() {
   /* 触摸：左右滑动切换页面（卡片区域内部的滑动不抢占） */
   const [pageDeckEl, setPageDeckEl] = useState(null);
   useSwipeDeck(pageDeckEl, {
+    role: "page",
     getDragEl: () => pageDeckEl?.querySelector(".page.active"),
     ignoreSelector: ".swipe-deck, input, textarea, select",
+    ignoreZone: () => pageDeckEl?.querySelector(".page.active .swipe-deck"),
     threshold: 72,
     onSwipe: (step) => {
       const ids = PAGES.map(([id]) => id);
@@ -1605,9 +1636,12 @@ function StudyPage({ app, studyCardRef }) {
   );
   const idx = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
   const word = pool[clamp(idx, 0, Math.max(0, pool.length - 1))];
+  // 切换动画进行中忽略新的切换，避免连续滑动叠加多层动画造成抖动
+  const busyRef = useRef(false);
   const move = useCallback(
     (step) => {
-      if (!pool.length) return;
+      if (!pool.length || busyRef.current) return;
+      busyRef.current = true;
       const pos = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
       const next = pool[(pos + step + pool.length) % pool.length];
       switchCard(
@@ -1617,7 +1651,9 @@ function StudyPage({ app, studyCardRef }) {
         },
         step,
         () => document.body.dataset.page === "study",
-      );
+      ).finally(() => {
+        busyRef.current = false;
+      });
     },
     [pool, user.lastWordId, patchUser, studyCardRef],
   );
@@ -1709,16 +1745,21 @@ function StudyPage({ app, studyCardRef }) {
 function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
   const { flash, setFlash, catalog, allWords, toggleFavorite, navigate } = app;
   const setF = (patch) => setFlash((f) => ({ ...f, ...patch }));
+  // 同 StudyPage：动画进行中忽略新的切换，防止连续滑动手势叠加动画
+  const busyRef = useRef(false);
   const move = useCallback(
     (step) => {
-      if (!flashPool.length) return;
+      if (!flashPool.length || busyRef.current) return;
+      busyRef.current = true;
       const nextIndex = (flash.index + step + flashPool.length) % flashPool.length;
       switchCard(
-        () => flashSceneRef.current,
+        () => flashSceneRef.current?.querySelector(".flip-card"),
         () => setFlash((f) => ({ ...f, index: nextIndex, flipped: false })),
         step,
         () => document.body.dataset.page === "flash",
-      );
+      ).finally(() => {
+        busyRef.current = false;
+      });
     },
     [flashPool, flash.index, flashSceneRef],
   );
@@ -1727,10 +1768,10 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [move]);
 
-  /* 触摸：左右滑动切换卡片 */
+  /* 触摸：左右滑动切换卡片（与沉浸学习一致：拖动容器、动画卡片） */
   const [deckEl, setDeckEl] = useState(null);
   useSwipeDeck(deckEl, {
-    getDragEl: () => deckEl?.querySelector(".flip-card"),
+    getDragEl: () => deckEl,
     onSwipe: (step) => move(step),
   });
   return (
@@ -1769,9 +1810,10 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
       </div>
       {flashWord ? (
         <>
-          <div className="flip-scene swipe-deck" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
+          <div className="flip-scene swipe-deck swipe-target" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
             <div
-              className={`flip-card swipe-target ${flash.flipped ? "flipped" : ""}`}
+              key={flash.index}
+              className={`flip-card ${flash.flipped ? "flipped" : ""}`}
               data-flip
               tabIndex={0}
               onClick={() => setF({ flipped: !flash.flipped })}
