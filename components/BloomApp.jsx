@@ -8,6 +8,7 @@
  * ============================================================ */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import gsap from "gsap";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -228,11 +229,14 @@ function CountUp({ value, suffix = "" }) {
   return <b className="home-count" ref={ref}>0{suffix}</b>;
 }
 
-/* ---------- WAAPI 卡片横向切换（50ms 出 / 70ms 入） ---------- */
+/* ---------- WAAPI 卡片横向切换（50ms 出 / 70ms 入，两页唯一的一套时序） ----------
+ * commit() 必须同步生效：旧实现里 React 状态更新是异步的，getCurrent() 在 commit()
+ * 之后拿到的仍是即将卸载的旧卡片，入场动画挂错了元素 —— 新卡片会「空一帧 + 瞬间弹出」，
+ * 看起来就是切换时抖一下。用 flushSync 提交后立刻给在场的新卡片挂入场动画即可根除。 */
 async function switchCard(getCurrent, commit, direction, isActivePage, startOffset = 0) {
   const current = getCurrent();
   if (!current || !current.animate || document.body.classList.contains("no-motion")) {
-    commit();
+    flushSync(commit);
     return;
   }
   // 手指离开时卡片所在的位置作为离场起点，动画方向与滑动方向一致，不会先"退回去"
@@ -241,35 +245,36 @@ async function switchCard(getCurrent, commit, direction, isActivePage, startOffs
   const sign = direction > 0 ? -1 : 1;
   const exitFrom = startOffset;
   const exitTo = startOffset + sign * Math.max(travel, Math.abs(startOffset) * 0.35);
-  const enterFrom = sign * -travel;
   current.style.pointerEvents = "none";
+  // 接管之前先撤销残留的回弹过渡 / 上一次切换动画，避免两层 transform 打架
+  current.getAnimations().forEach((a) => a.cancel());
   let exit = null;
   let enter = null;
-  exit = current.animate(
-    [
-      { opacity: 1, transform: `translate3d(${exitFrom}px,0,0) scale(1)` },
-      { opacity: 0, transform: `translate3d(${exitTo}px,0,0) scale(0.985)` },
-    ],
-    { duration: CARD_SWITCH_EXIT_MS, easing: "cubic-bezier(0.4,0,0.65,1)", fill: "forwards" },
-  );
   try {
+    exit = current.animate(
+      [
+        { opacity: 1, transform: `translate3d(${exitFrom}px,0,0) scale(1)` },
+        { opacity: 0, transform: `translate3d(${exitTo}px,0,0) scale(0.985)` },
+      ],
+      { duration: CARD_SWITCH_EXIT_MS, easing: "cubic-bezier(0.4,0,0.65,1)", fill: "both" },
+    );
     await exit.finished.catch(() => {});
     if (!isActivePage()) return;
-    commit();
+    // 先撤销离场的 forwards 填充，再同步换内容：同一个任务内完成，不会露出中间帧
+    exit.cancel();
+    exit = null;
+    flushSync(commit);
     const incoming = getCurrent();
     if (!incoming) return;
-    // 入场也带 forwards：记忆卡片的场景元素会被复用，必须撑到收尾再统一撤销
+    // 入场统一「原地淡入」：两个方向完全一致，且新卡片零位移，
+    // 不会像旧实现那样在「下一个 / 左滑」时从右侧冲进视口、把页面撑出横向滚动条。
+    // fill:both 让第一帧的 opacity:0 立刻生效，杜绝新卡片先闪现再开始动画。
     enter = incoming.animate(
-      [
-        { opacity: 0, transform: `translate3d(${enterFrom}px,0,0) scale(0.985)` },
-        { opacity: 1, transform: "translate3d(0,0,0) scale(1)" },
-      ],
-      { duration: CARD_SWITCH_ENTER_MS, easing: "cubic-bezier(0.2,0.72,0.25,1)", fill: "forwards" },
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: CARD_SWITCH_ENTER_MS, easing: "cubic-bezier(0.2,0.72,0.25,1)", fill: "both" },
     );
     await enter.finished.catch(() => {});
   } finally {
-    // forwards 填充不会自动移除。若元素被复用（.flip-scene 没有 key），
-    // 离场动画会把 opacity 永久钉在 0 —— 卡片看起来"消失"了。
     if (exit) exit.cancel();
     if (enter) enter.cancel();
     const now = getCurrent();
@@ -401,6 +406,44 @@ function useSwipeDeck(deckEl, { getDragEl, onSwipe, threshold = 56, ignoreSelect
       deckEl.removeEventListener("touchcancel", onTouchEnd);
     };
   }, [deckEl, threshold]);
+}
+
+/* ---------- 卡片页共用的「手势 + 切换」引擎 ----------
+ * 沉浸学习与记忆卡片只传入各自的选择器和提交函数，手势判定、阻尼、阈值、
+ * 防连点、出入场时序全部走同一份代码，左右滑行为永远保持一致。 */
+function useCardDeck({ containerRef, cardSelector, pool, index, activePage, commit, moveRef }) {
+  const busyRef = useRef(false);
+  const latest = useRef({ pool, index, activePage, commit });
+  latest.current = { pool, index, activePage, commit };
+
+  const move = useCallback(
+    (step, offset = 0) => {
+      const s = latest.current;
+      if (!s.pool.length || busyRef.current) return;
+      busyRef.current = true;
+      const next = (s.index + step + s.pool.length) % s.pool.length;
+      switchCard(
+        () => containerRef.current?.querySelector(cardSelector),
+        () => latest.current.commit(next),
+        step,
+        () => latest.current.activePage(),
+        offset,
+      ).finally(() => {
+        busyRef.current = false;
+      });
+    },
+    [containerRef, cardSelector],
+  );
+
+  // 方向键走同一个入口、同一把 busy 锁
+  if (moveRef) moveRef.current = move;
+
+  const [deckEl, setDeckEl] = useState(null);
+  useSwipeDeck(deckEl, {
+    getDragEl: () => deckEl?.querySelector(cardSelector),
+    onSwipe: (step, offset) => move(step, offset),
+  });
+  return { move, setDeckEl };
 }
 
 /* ============================================================
@@ -705,8 +748,6 @@ export default function BloomApp() {
   const studyCardRef = useRef(null);
   const flashSceneRef = useRef(null);
   const quizCardRef = useRef(null);
-  const [studyBusy, setStudyBusy] = useState(false);
-  const [flashBusy, setFlashBusy] = useState(false);
   const [quizBusy, setQuizBusy] = useState(false);
 
   const studyPool = useMemo(() => {
@@ -716,29 +757,9 @@ export default function BloomApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, allWords, user.studyCollectionId]);
   studyPoolRef.current = studyPool;
-  const studyIndex = Math.max(0, studyPool.findIndex((w) => w.id === user.lastWordId));
-  const studyWord = studyPool[clamp(studyIndex, 0, Math.max(0, studyPool.length - 1))];
 
-  const moveStudy = useCallback(
-    (step) => {
-      const pool = studyPoolRef.current;
-      if (!pool.length || studyBusy) return;
-      const pos = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
-      const next = pool[(pos + step + pool.length) % pool.length];
-      switchCard(
-        () => studyCardRef.current?.querySelector(".study-card"),
-        () => {
-          patchUser((prev) => ({ ...prev, lastWordId: next.id }));
-          markStudy(next.id);
-        },
-        step,
-        () => page === "study",
-      ).then(() => setStudyBusy(false));
-      setStudyBusy(true);
-    },
-    [studyBusy, user.lastWordId, patchUser, markStudy, page],
-  );
-  moveStudyRef.current = moveStudy;
+  /* 键盘方向键与触摸滑动共用同一个 move（由页面内的 useCardDeck 回填到 ref），
+     因此只存在一份 busy 锁，不会出现两套动画叠加造成的抖动。 */
 
   /* ---- 记忆卡片 ---- */
   const flashPool = useMemo(() => {
@@ -747,22 +768,6 @@ export default function BloomApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, allWords, flash.collection, flash.status, flash.sort, flash.seed]);
   const flashWord = flashPool[clamp(flash.index, 0, Math.max(0, flashPool.length - 1))];
-  const moveFlash = useCallback(
-    (step) => {
-      const pool = flashPool;
-      if (!pool.length || flashBusy) return;
-      const nextIndex = (flash.index + step + pool.length) % pool.length;
-      switchCard(
-        () => flashSceneRef.current?.querySelector(".flip-card"),
-        () => setFlash((f) => ({ ...f, index: nextIndex, flipped: false })),
-        step,
-        () => page === "flash",
-      ).then(() => setFlashBusy(false));
-      setFlashBusy(true);
-    },
-    [flashPool, flash.index, flashBusy, page],
-  );
-  moveFlashRef.current = moveFlash;
 
   /* ---- 记忆测试 ---- */
   const quizPool = useMemo(() => {
@@ -1152,9 +1157,9 @@ export default function BloomApp() {
       case "library":
         return <LibraryPage app={app} />;
       case "study":
-        return <StudyPage app={app} studyCardRef={studyCardRef} />;
+        return <StudyPage app={app} studyCardRef={studyCardRef} moveRef={moveStudyRef} />;
       case "flash":
-        return <FlashPage app={app} flashSceneRef={flashSceneRef} flashWord={flashWord} flashPool={flashPool} />;
+        return <FlashPage app={app} flashSceneRef={flashSceneRef} flashWord={flashWord} flashPool={flashPool} moveRef={moveFlashRef} />;
       case "quiz":
         return <QuizPage app={app} quizWord={quizWord} quizCardRef={quizCardRef} moveQuiz={moveQuiz} nextQuestion={nextQuestion} />;
       case "favorites":
@@ -1653,7 +1658,7 @@ function LibraryPage({ app }) {
 }
 
 /* ---------- 沉浸学习 ---------- */
-function StudyPage({ app, studyCardRef }) {
+function StudyPage({ app, studyCardRef, moveRef }) {
   const { user, allWords, catalog, patchUser, updateWordStatus, toggleFavorite, navigate } = app;
   const pool = useMemo(
     () => allWords.filter((w) => user.studyCollectionId === "all" || w.collectionId === user.studyCollectionId),
@@ -1661,38 +1666,20 @@ function StudyPage({ app, studyCardRef }) {
   );
   const idx = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
   const word = pool[clamp(idx, 0, Math.max(0, pool.length - 1))];
-  // 切换动画进行中忽略新的切换，避免连续滑动叠加多层动画造成抖动
-  const busyRef = useRef(false);
-  const move = useCallback(
-    (step, offset = 0) => {
-      if (!pool.length || busyRef.current) return;
-      busyRef.current = true;
-      const pos = Math.max(0, pool.findIndex((w) => w.id === user.lastWordId));
-      const next = pool[(pos + step + pool.length) % pool.length];
-      switchCard(
-        () => studyCardRef.current?.querySelector(".study-card"),
-        () => {
-          patchUser((prev) => ({ ...prev, lastWordId: next.id }));
-        },
-        step,
-        () => document.body.dataset.page === "study",
-        offset,
-      ).finally(() => {
-        busyRef.current = false;
-      });
-    },
-    [pool, user.lastWordId, patchUser, studyCardRef],
-  );
   useEffect(() => {
     if (word) app.markStudy(word.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word?.id]);
 
-  /* 触摸：左右滑动切换单词（拖动卡片本身，离场动画从手指位置继续） */
-  const [deckEl, setDeckEl] = useState(null);
-  useSwipeDeck(deckEl, {
-    getDragEl: () => deckEl?.querySelector(".study-card"),
-    onSwipe: (step, offset) => move(step, offset),
+  /* 与记忆卡片共用同一套滑动 / 切换引擎 */
+  const { move, setDeckEl } = useCardDeck({
+    containerRef: studyCardRef,
+    cardSelector: ".study-card",
+    pool,
+    index: idx,
+    activePage: () => document.body.dataset.page === "study",
+    commit: (next) => patchUser((prev) => ({ ...prev, lastWordId: pool[next].id })),
+    moveRef,
   });
   if (!pool.length) {
     return (
@@ -1768,38 +1755,19 @@ function StudyPage({ app, studyCardRef }) {
 }
 
 /* ---------- 记忆卡片 ---------- */
-function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
+function FlashPage({ app, flashSceneRef, flashWord, flashPool, moveRef }) {
   const { flash, setFlash, catalog, allWords, toggleFavorite, navigate } = app;
   const setF = (patch) => setFlash((f) => ({ ...f, ...patch }));
-  // 同 StudyPage：动画进行中忽略新的切换，防止连续滑动手势叠加动画
-  const busyRef = useRef(false);
-  const move = useCallback(
-    (step, offset = 0) => {
-      if (!flashPool.length || busyRef.current) return;
-      busyRef.current = true;
-      const nextIndex = (flash.index + step + flashPool.length) % flashPool.length;
-      switchCard(
-        () => flashSceneRef.current?.querySelector(".flip-card"),
-        () => setFlash((f) => ({ ...f, index: nextIndex, flipped: false })),
-        step,
-        () => document.body.dataset.page === "flash",
-        offset,
-      ).finally(() => {
-        busyRef.current = false;
-      });
-    },
-    [flashPool, flash.index, flashSceneRef],
-  );
-  useEffect(() => {
-    window.__moveFlash = move;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [move]);
 
-  /* 触摸：左右滑动切换卡片（与沉浸学习一致：拖动卡片本身） */
-  const [deckEl, setDeckEl] = useState(null);
-  useSwipeDeck(deckEl, {
-    getDragEl: () => deckEl?.querySelector(".flip-card"),
-    onSwipe: (step, offset) => move(step, offset),
+  /* 与沉浸学习共用同一套滑动 / 切换引擎：手势判定、阻尼、阈值、出入场时序完全一致 */
+  const { move, setDeckEl } = useCardDeck({
+    containerRef: flashSceneRef,
+    cardSelector: ".flip-card",
+    pool: flashPool,
+    index: flash.index,
+    activePage: () => document.body.dataset.page === "flash",
+    commit: (next) => setFlash((f) => ({ ...f, index: next, flipped: false })),
+    moveRef,
   });
   return (
     <>
@@ -1837,45 +1805,49 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool }) {
       </div>
       {flashWord ? (
         <>
-          <div className="flip-scene swipe-deck" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
-            <div
-              key={flash.index}
-              className={`flip-card swipe-target ${flash.flipped ? "flipped" : ""}`}
-              data-flip
-              tabIndex={0}
-              onClick={() => setF({ flipped: !flash.flipped })}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setF({ flipped: !flash.flipped }))}
-              aria-label="翻转卡片"
-            >
-              <div className="face front glass">
-                <div className="badges">
-                  <span className="badge">{flashWord.category}</span>
-                  <span className="badge num">#{flashWord.number}</span>
+          {/* 与沉浸学习的 .study-stage 一致：卡片 + 导航按钮在同一个滑动手势区内，
+              在卡片下方按钮区起手的横向滑动也切卡片，而不会落到页面级滑动把整页拖走 */}
+          <div className="flash-stage swipe-deck" ref={(el) => { flashSceneRef.current = el; setDeckEl(el); }}>
+            <div className="flip-scene">
+              <div
+                key={flash.index}
+                className={`flip-card swipe-target ${flash.flipped ? "flipped" : ""}`}
+                data-flip
+                tabIndex={0}
+                onClick={() => setF({ flipped: !flash.flipped })}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setF({ flipped: !flash.flipped }))}
+                aria-label="翻转卡片"
+              >
+                <div className="face front glass">
+                  <div className="badges">
+                    <span className="badge">{flashWord.category}</span>
+                    <span className="badge num">#{flashWord.number}</span>
+                  </div>
+                  <h2 className="flip-word">{flashWord.word}</h2>
+                  {flashWord.phonetic ? <p className="phonetic">{phoneticOf(flashWord)}</p> : null}
+                  <p className="flip-tip">点击或按空格翻面</p>
                 </div>
-                <h2 className="flip-word">{flashWord.word}</h2>
-                {flashWord.phonetic ? <p className="phonetic">{phoneticOf(flashWord)}</p> : null}
-                <p className="flip-tip">点击或按空格翻面</p>
-              </div>
-              <div className="face back glass">
-                <span className="badge collection">{flashWord.collectionTitle}</span>
-                <h2 className="flip-word">{flashWord.word}</h2>
-                <p className="flip-meaning">{flashWord.meaning}</p>
+                <div className="face back glass">
+                  <span className="badge collection">{flashWord.collectionTitle}</span>
+                  <h2 className="flip-word">{flashWord.word}</h2>
+                  <p className="flip-meaning">{flashWord.meaning}</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flash-nav">
-            <button className="round-btn" onClick={() => move(-1)} aria-label="上一张">
-              ←
-            </button>
-            <button className={`pill ${flashWord.favorite ? "primary" : ""}`} onClick={() => toggleFavorite(flashWord.id)}>
-              {flashWord.favorite ? "♥ 已收藏" : "♡ 收藏"}
-            </button>
-            <button className="pill" onClick={() => { app.patchUser((prev) => ({ ...prev, lastWordId: flashWord.id, studyCollectionId: "all" })); navigate("study"); }}>
-              去沉浸学习
-            </button>
-            <button className="round-btn" onClick={() => move(1)} aria-label="下一张">
-              →
-            </button>
+            <div className="flash-nav">
+              <button className="round-btn" onClick={() => move(-1)} aria-label="上一张">
+                ←
+              </button>
+              <button className={`pill ${flashWord.favorite ? "primary" : ""}`} onClick={() => toggleFavorite(flashWord.id)}>
+                {flashWord.favorite ? "♥ 已收藏" : "♡ 收藏"}
+              </button>
+              <button className="pill" onClick={() => { app.patchUser((prev) => ({ ...prev, lastWordId: flashWord.id, studyCollectionId: "all" })); navigate("study"); }}>
+                去沉浸学习
+              </button>
+              <button className="round-btn" onClick={() => move(1)} aria-label="下一张">
+                →
+              </button>
+            </div>
           </div>
           <p className="swipe-hint">← 左右滑动切换卡片 · 点击翻面</p>
         </>
