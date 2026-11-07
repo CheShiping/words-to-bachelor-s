@@ -1165,6 +1165,16 @@ select.field {
   justify-content: center;
   gap: 16px;
 }
+/* 待复习词一键掌握的 CTA：沿用 .pill，只用 badge 同款柔和纯色区分，不加渐变 */
+.flash-nav .pill.mastered-cta {
+  background: var(--pink-soft);
+  border-color: var(--pink-light);
+  color: var(--plum);
+}
+.flash-nav .pill.mastered-cta:hover {
+  background: var(--pink-soft);
+  color: var(--plum);
+}
 .flash-counter {
   color: var(--muted);
   font-size: 13.5px;

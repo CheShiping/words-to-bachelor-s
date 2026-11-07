@@ -44,6 +44,8 @@
 - **新增面板必须复用设计系统同类型组件语言**：文本块用 `.journal-card`（玻璃底 + 内描边 + 26px 圆角）、
   标签用 `.badge` / `.badge.collection`、进度条用 `.path-bar`、按钮用 `.pill`。
   不要自造彩色左边框、高饱和色块或另一套按钮——与项目文本块主题冲突是真实缺陷，不是审美分歧。
+- **记忆卡片的状态按钮不是「切卡」**：标为已掌握走 `updateWordStatus`，不要复制 `useCardDeck` 的动画/锁；
+  按「待复习」筛选时该词会立刻出池，只需把 `flash.index` 夹进新池范围，否则末位会出现空白卡与越界计数。
 
 ## 构建与预览
 
@@ -75,6 +77,7 @@ npm run build    # 最低门槛：静态导出必须成功
 npm run catalog  # 改 docs/ 词表或 build_books.py 后，重建 catalog.json + 词组书 + 清单
 node scripts/check_migration.mjs  # 改动 components/userStorage.mjs 后必跑（6 组断言）
 node scripts/check_books_ui.mjs   # 改动选书弹框/词书加载后跑（44 项 CDP 断言，需本机 Chrome + 8773 静态预览）
+node scripts/check_flash_mastered.mjs  # 改动记忆卡片状态按钮后跑（30 项 CDP 断言，脚本自带静态预览）
 ```
 
 > 本机 WorkBuddy 环境的 `safe-delete` 守卫会在 `next build` 清理 `.next` 时误伤，

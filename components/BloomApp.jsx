@@ -1955,8 +1955,18 @@ function StudyPage({ app, studyCardRef, moveRef }) {
 
 /* ---------- 记忆卡片 ---------- */
 function FlashPage({ app, flashSceneRef, flashWord, flashPool, moveRef }) {
-  const { flash, setFlash, catalog, allWords, toggleFavorite, navigate } = app;
+  const { flash, setFlash, catalog, allWords, toggleFavorite, navigate, updateWordStatus } = app;
   const setF = (patch) => setFlash((f) => ({ ...f, ...patch }));
+
+  /* 待复习词由用户自己判定是否掌握：写状态走与沉浸学习相同的 updateWordStatus。
+     按「待复习」筛选时该词会立刻出池、后面的卡片前移，索引需夹进新池范围，
+     否则末位卡片被掌握后会出现越界计数或空白卡。 */
+  const markMastered = () => {
+    if (!flashWord || flashWord.status !== "review") return;
+    updateWordStatus(flashWord.id, "mastered");
+    const nextLength = flash.status === "review" ? Math.max(0, flashPool.length - 1) : flashPool.length;
+    setF({ index: clamp(flash.index, 0, Math.max(0, nextLength - 1)), flipped: false });
+  };
 
   /* 与沉浸学习共用同一套滑动 / 切换引擎：手势判定、阻尼、阈值、出入场时序完全一致 */
   const { move, setDeckEl } = useCardDeck({
@@ -2046,9 +2056,19 @@ function FlashPage({ app, flashSceneRef, flashWord, flashPool, moveRef }) {
               <button className={`pill ${flashWord.favorite ? "primary" : ""}`} onClick={() => toggleFavorite(flashWord.id)}>
                 {flashWord.favorite ? "♥ 已收藏" : "♡ 收藏"}
               </button>
-              <button className="pill" onClick={() => { app.patchUser((prev) => ({ ...prev, lastWordId: flashWord.id, studyCollectionId: "all" })); navigate("study"); }}>
-                去沉浸学习
-              </button>
+              {flashWord.status === "review" ? (
+                <button className="pill mastered-cta" onClick={markMastered} aria-label="把这个待复习词标为已掌握">
+                  ✓ 标为已掌握
+                </button>
+              ) : flashWord.status === "mastered" ? (
+                <button className="pill" disabled aria-label="这个词已掌握">
+                  ✓ 已掌握
+                </button>
+              ) : (
+                <button className="pill" onClick={() => { app.patchUser((prev) => ({ ...prev, lastWordId: flashWord.id, studyCollectionId: "all" })); navigate("study"); }}>
+                  去沉浸学习
+                </button>
+              )}
               <button className="round-btn" onClick={() => move(1)} aria-label="下一张">
                 →
               </button>
