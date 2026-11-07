@@ -4,7 +4,7 @@
 
 - 目标：词间日和已上线（https://cheshiping.github.io/words-to-bachelor-s/），当前无进行中功能；新需求进来时先追加到 `feature_list.json`
 - 当前状态：核心功能 + 多词书 + 记忆卡片一键掌握全部完成（feat-001 ~ feat-015 全 done）
-- 分支 / 提交：`main`（推送即自动发布）；本次改动尚未提交，随下次提交一并入库
+- 分支 / 提交：`main` @ `69d4dbe`（feat: 记忆卡片待复习词可一键标为已掌握）已推送 `origin/main`，GitHub Actions 自动发布
 
 ## 本次会话已完成
 
