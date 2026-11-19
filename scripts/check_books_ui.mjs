@@ -1,4 +1,4 @@
-/* 浏览器回归：多词书弹框 / 切换 / 记忆 / 例句 / 组件一致性 / 移动端（44 项断言）。
+/* 浏览器回归：多词书弹框 / 切换 / 记忆 / 例句 / 组件一致性 / 移动端（三词书，61 项断言）。
    依赖：本机 Chrome；先 `npm run build`，再启动 `python -m http.server 8773 --directory out`。
    用法：node scripts/check_books_ui.mjs  —— 截图输出到 shots/book-picker/（已被 .gitignore 忽略） */
 import { spawn } from "node:child_process";
@@ -88,11 +88,11 @@ await send("Page.navigate", { url: BASE });
 await waitFor(`!!document.querySelector(".book-picker-modal.show")`);
 await sleep(400);
 check("首访自动弹出选书弹框", await ev(`!!document.querySelector(".book-picker-modal.show")`));
-check("弹框列出两本词书", (await ev(`document.querySelectorAll(".book-card").length`)) === 2);
+check("弹框列出三本词书", (await ev(`document.querySelectorAll(".book-card").length`)) === 3);
 check("标题为「选择今天要读的词书」", (await ev(`document.getElementById("bookPickerTitle")?.textContent`)) === "选择今天要读的词书");
 check("首访不可关闭（无返回按钮）", await ev(`!document.querySelector(".book-picker-foot")`));
-check("弹框显示词数与进度条", await ev(`document.querySelectorAll(".book-card .path-bar").length === 2`));
-check("书卡片沿用文本块玻璃样式", await ev(`document.querySelectorAll(".book-card.journal-card").length === 2`));
+check("弹框显示词数与进度条", await ev(`document.querySelectorAll(".book-card .path-bar").length === 3`));
+check("书卡片沿用文本块玻璃样式", await ev(`document.querySelectorAll(".book-card.journal-card").length === 3`));
 check("书卡片无突兀纯色左边框", await ev(`(() => { const s = getComputedStyle(document.querySelector(".book-card")); return s.borderLeftWidth === s.borderTopWidth && s.borderLeftColor === s.borderTopColor; })()`));
 check("CTA 按钮为纯色（无渐变）", await ev(`!getComputedStyle(document.querySelector(".book-card-cta")).backgroundImage.includes("gradient")`));
 check("顶栏导航标签保持单行", await ev(`[...document.querySelectorAll("#topNav em")].every(e => e.getClientRects().length === 1)`));
@@ -180,6 +180,48 @@ await go("quiz");
 check("3500 书恢复拼写题", (await ev(`document.querySelector(".quiz-setup .hint")?.textContent`))?.includes("拼写混合"));
 await go("home");
 check("3500 书恢复「长期学习路径」", await ev(`[...document.querySelectorAll(".journal-card h3")].some(h => h.textContent.includes("长期学习路径"))`));
+
+/* ---- 5.5 第三本词书：你还在背单词吗（4449 词） ---- */
+await ev(`document.querySelector(".book-switch-btn").click()`);
+await sleep(400);
+check("切换弹框列出第三本书", await ev(`!!document.querySelectorAll(".book-card")[2]?.textContent.includes("4449")`));
+await ev(`document.querySelectorAll(".book-card")[2].click()`);
+await waitFor(`document.querySelector(".sync-status")?.textContent.includes("4449 词")`, 12000);
+await sleep(500);
+check("切换到 4449 词书", (await ev(`document.querySelector(".book-switch-name")?.textContent`)) === "4449 词");
+const s5 = await stored();
+check("localStorage 记住 4449 词书", s5?.activeBookId === "words-4449", String(s5?.activeBookId));
+check("切书软重启回首页", await ev(`document.body.dataset.page === "home"`));
+check("词组书进度仍独立保留", Object.keys(s5?.books?.["phrases-764"]?.words || {}).length > 0);
+
+await go("library");
+const count4449 = await ev(`document.querySelector(".count")?.textContent`);
+check("词典库显示 223 页词集 / 4449 条", count4449?.includes("223") && count4449?.includes("4449"), count4449?.trim());
+check("4449 词书分类标签为「全部词性」", await ev(`document.querySelector('select[aria-label="按分类筛选"] option')?.textContent === "全部词性"`));
+check("分类项含词性派生值", await ev(`[...document.querySelectorAll('select[aria-label="按分类筛选"] option')].some(o => o.textContent === "名词")`));
+check("释义无残留兼容字符", await ev(`![...document.querySelectorAll(".word-card .meaning")].some(e => /[\\u2E80-\\u2FFF]/.test(e.textContent))`));
+check("释义无残留 <br> 字面量", await ev(`![...document.querySelectorAll(".word-card .meaning")].some(e => e.textContent.includes("<br>"))`));
+await shot("05b-4449-library.png");
+
+await go("study");
+check("沉浸学习卡有多条释义（分号合并）", await ev(`!!document.querySelector(".study-card .study-meaning")?.textContent.includes("；")`));
+check("4449 词书无音标时不显示音标", await ev(`!document.querySelector(".study-card .phonetic")`));
+check("4449 词书无例句时不显示例句区", await ev(`!document.querySelector(".study-card .example-en")`));
+await shot("05c-4449-study.png");
+const s6 = await stored();
+check("学习行为写入 4449 词书桶", Object.keys(s6?.books?.["words-4449"]?.words || {}).length > 0);
+
+await go("flash");
+await ev(`document.querySelector(".flip-card")?.click()`);
+await sleep(400);
+check("记忆卡背面无例句区", await ev(`!document.querySelector(".face.back .example-block.compact")`));
+
+await go("quiz");
+const hint4449 = await ev(`document.querySelector(".quiz-setup .hint")?.textContent`);
+check("4449 词书恢复拼写题", hint4449?.includes("拼写混合"), hint4449?.slice(0, 60));
+
+await go("home");
+check("4449 词书隐藏「长期学习路径」模块", await ev(`![...document.querySelectorAll(".journal-card h3")].some(h => h.textContent.includes("长期学习路径"))`));
 
 /* ---- 6. v2 旧进度迁移（真实浏览器） ---- */
 await ev(`localStorage.setItem("wordsInBloomData", ${JSON.stringify(JSON.stringify({

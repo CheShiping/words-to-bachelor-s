@@ -11,11 +11,11 @@
   <img src="https://img.shields.io/badge/Next.js-15-b56f82?style=flat-square" alt="Next.js 15">
   <img src="https://img.shields.io/badge/React-19-b56f82?style=flat-square" alt="React 19">
   <img src="https://img.shields.io/badge/%E9%9D%99%E6%80%81%E5%AF%BC%E5%87%BA-out%2F-b56f82?style=flat-square" alt="静态导出到 out/">
-  <img src="https://img.shields.io/badge/%E5%8F%8C%E8%AF%8D%E4%B9%A6-4%2C053%20%E6%9D%A1-b56f82?style=flat-square" alt="双词书，共 4,053 条">
+  <img src="https://img.shields.io/badge/%E4%B8%89%E8%AF%8D%E4%B9%A6-8%2C502%20%E6%9D%A1-b56f82?style=flat-square" alt="三词书，共 8,502 条">
 </p>
 
 <p align="center">
-  把《2027 专升本 3500 词》与《专升本真题核心词组》做成一间可以一直待下去的网页书房。<br>
+  把《2027 专升本 3500 词》《专升本真题核心词组》与《你还在背单词吗》做成一间可以一直待下去的网页书房。<br>
   打开先选词书，浏览器自动记住；无需登录，学习进度只写在你自己的浏览器里。
 </p>
 
@@ -36,9 +36,9 @@
 
 ## 能做什么
 
-- **双词书** —— 首次打开先选一本，浏览器自动记住；顶栏随时切换，每本书的进度、收藏与复习排期各自独立保留。
-- **词典库** —— 3500 词书 3,289 词 / 33 组词集；真题词组书 764 条 / 39 页，按标签分类筛选；支持搜索、排序与分页。
-- **沉浸学习** —— 一次只面对一个词：大字、音标、释义（词组书另配英文例句与中文译文），配 `学习 / 待复习 / 已掌握` 三档状态。
+- **三词书** —— 首次打开先选一本，浏览器自动记住；顶栏随时切换，每本书的进度、收藏与复习排期各自独立保留。
+- **词典库** —— 3500 词书 3,289 词 / 33 组词集；真题词组书 764 条 / 39 页；4449 词书按原书 223 页分节，按词性分类筛选；支持搜索、排序与分页。
+- **沉浸学习** —— 一次只面对一个词：大字、音标、释义（词组书配英文例句与中文译文，4449 词书含多条词性释义），配 `学习 / 待复习 / 已掌握` 三档状态。
 - **记忆卡片** —— 点击翻面，左右滑动换卡；可单独按词集或状态抽卡，待复习的词可一键标为「已掌握」。
 - **记忆测试** —— 看释义选单词、看单词选释义、拼写填空三种题型混合出题（词组书只出中英互测），答完给错题清单。
 - **间隔复习** —— 答对累积、答错清零并重新排期，复习时间从 4 小时递增到 30 天。
@@ -70,7 +70,15 @@
 - 从 `usage. / phrv. / idm. / collocation.` 等标签派生 7 类分类，供词典库筛选；
 - 例句拆成 `exampleEn / exampleZh` 两个字段；Word 列里的 `(sb)`、`…` 原样保留，这是真题原形态。
 
-三份数据（3500 词书、词组书、词书清单）都由 `npm run catalog` 确定性生成，`init.sh` 会重新生成后逐文件 diff 做幂等校验。前端只先取几 KB 的清单，再按用户选择拉取对应词书，加第三本书无需改前端代码。
+4449 词书由同一个脚本的 `parse_words_4449()` 解析 `docs/2027专升本英语你还在背单词吗.md` 的 3 列表格：
+
+- 按原书 **223 页**分节，4449 条编号 1–4449 逐条校验；左栏 `Word` 与右栏 `Meaning` 按编号一一对应；
+- 多义项的 `<br>` 合并成中文分号；首条释义的词性标签派生 14 类分类，供词典库筛选；
+- 原版无音标、无例句，故数据层不写 `phonetic` / `exampleEn`，界面自动隐藏对应区块；
+- PDF 原文用 137 个康熙部首 / CJK 简化偏旁兼容字符，正文已用 NFKC + 22 个显式映射统一成规范汉字，
+  用字对照见 `docs/` 附录 A，逐页原始文本见附录 B。
+
+四份数据（3500 词书、词组书、4449 词书、词书清单）都由 `npm run catalog` 确定性生成，`init.sh` 会重新生成后逐文件 diff 做幂等校验。前端只先取几 KB 的清单，再按用户选择拉取对应词书，加新词书无需改前端代码。
 
 ## 快速开始
 
@@ -98,6 +106,7 @@ node scripts/check_migration.mjs     # 改动进度存储后跑一次回归（6 
 ```text
 public/data/catalog.json                3500 词书（3,289 词）
 public/data/books/phrases-764.json      真题核心词组（764 条）
+public/data/books/words-4449.json       你还在背单词吗（4,449 词）
 public/data/books/index.json            词书清单（元信息 + 能力开关 + dataUrl）
 ```
 
@@ -125,7 +134,7 @@ npm run build
 app/                 页面与全局样式（App Router）
 components/          BloomApp.jsx（应用主体）、userStorage.mjs（进度分桶与 v2→v3 迁移）
 public/data/         catalog.json（3500 词书）+ books/（词组书 JSON 与 index.json 清单）
-docs/                两份词表原文 Markdown
+docs/                三份词表原文 Markdown
 scripts/             build_books.py（多词书管线）、check_migration.mjs（存储回归）
 assets/readme/       README 配图（SVG + WebP）
 out/                 npm run build 的静态产物

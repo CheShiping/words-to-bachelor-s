@@ -2,8 +2,8 @@
 
 ## 当前状态
 
-**最后更新：** 2026-11-07
-**当前功能：** 无进行中功能 —— feat-015「记忆卡片待复习词一键标为已掌握」已交付并验证
+**最后更新：** 2026-11-19
+**当前功能：** 无进行中功能 —— feat-016「《你还在背单词吗》4449 词书接入」已交付并验证
 
 ## 状态概览
 
@@ -19,6 +19,9 @@
 - [x] **记忆卡片待复习词一键掌握（feat-015）**：`review` 卡片底部「去沉浸学习」改为「✓ 标为已掌握」，
   点击写入 `mastered`（清复习排期、连对计数置 2）；`mastered` 卡片显示禁用完成态「✓ 已掌握」；
   按「待复习」筛选时卡片出池后索引自动收敛，队列清空显示空状态
+- [x] **《你还在背单词吗》4449 词书接入（feat-016）**：PDF → Markdown（223 页 / 附录 A 用字对照 / 附录 B 原文备份），
+  `parse_words_4449()` 生成 words-4449.json（词性派生 14 类、无音标例句），清单第三条 + init.sh 四文件校验；
+  前端零改动，三书 61/61 CDP 断言通过
 
 ### 进行中
 
@@ -27,8 +30,7 @@
 ### 下一步
 
 1. 新需求进来时：在 `feature_list.json` 追加条目，按「一次一个功能」推进
-2. 加第三本词书：写一个 `parse_xxx()` → 在 `scripts/build_books.py` 追加一个 JSON + 一条清单记录，前端不用改
-3. 可选清理：`scripts/_probe2.mjs`、`_swipe_diag.mjs`、`_swipe_verify2.mjs` 是历史滑动排查诊断脚本，确认无用后可删除（需用户确认）
+2. 可选清理：`scripts/_probe2.mjs`、`_swipe_diag.mjs`、`_swipe_verify2.mjs` 是历史滑动排查诊断脚本，确认无用后可删除（需用户确认）
 
 ## 阻塞 / 风险
 
@@ -87,3 +89,61 @@
 - 改动记忆卡片状态按钮后跑 `node scripts/check_flash_mastered.mjs`（脚本会自动起静态预览，无需手工开服务）
 - 改完源码要 `npm run build` 重新导出 `out/`，否则 8773 静态预览看到的仍是旧版本
 - 本地预览：`python -m http.server 8773 --directory out`（与 Next dev 不要同时开）
+
+## 文档产出（2026-11-12）
+
+- 新增根目录 **`DESIGN_SYSTEM.md`**：归纳 `app/globals.css`（2,174 行 / 178 个类选择器）、
+  `components/BloomApp.jsx`（WAAPI/GSAP 时序、手势阈值、花瓣参数）、`app/layout.jsx`（主题首帧）、
+  以及 `AGENTS.md` / 项目记忆中的设计硬约定，共 13 节：定位 / 原则 / tokens / 玻璃材质 / 排版 /
+  组件目录 / 状态色 / 动效三层 / 夜樱主题 / 响应式 / z-index / 无障碍 / 扩展约定与验证。
+- 文档明确「渐变边界」：既有主 CTA、进度条、装饰渐变保留；**新增状态型 CTA 一律柔和纯色**，
+  不自造高饱和色块或第二套按钮语言。
+- 纯文档产出：未改动任何源码、样式、词书数据；`feature_list.json` 保持不变（功能唯一事实源，
+  文档不占功能条目）。`out/` 由门禁重新导出，内容与基线一致。
+- 验证：`CODEBUDDY_SAFE_DELETE_BULK_THRESHOLD=2000 ./init.sh` 通过
+  （三份词书数据一致、`npm run build` 成功、`out/index.html` 存在）。基线提交 `07b9b89`。
+
+## feat-016 会话（2026-11-19）
+
+### 目标
+把用户提供的 `docs/2027专升本英语 你还在背单词吗.pdf`（223 页 / 4449 词）作为第三本词书接入，
+复用已落地的清单驱动架构，前端零改动。
+
+### PDF 分析与转换
+- 按项目约定先把中文文件名复制到 ASCII 路径再交给 PDF CLI；`-f txt` + `-f structure` 双路交叉校验：
+  txt 得 223 个页脚 / 446 个 `Word Meaning` 双栏表头，structure 得 223 sections / 446 tables，完全吻合。
+- 版式：每页左栏「编号 + 英文单词」20 条（末页 9 条），右栏「编号 + 词性释义」；多义项分行。
+- 校验结果：编号 1–4449 连续无缺；223 页 = 222×20 + 9；两栏按编号一一对应，0 异常页。
+- 用字规范化：NFKC + 22 个 CJK 简化偏旁显式映射 + `戶→户`，共处理 137 个兼容字符；
+  正文保留 `…`（599 处），附录 A 收录原字符/码位/规范字/出现次数，附录 B 保留 223 页逐页原文（字符未改动）。
+- 生成 `docs/2027专升本英语你还在背单词吗.md`（737 KB / 21,486 行）：按页分节 3 列表格
+  `# / Word / Meaning`，多义项用 `<br>` 分行，与词组书同构。
+
+### 构建管线与数据
+- `scripts/build_books.py`：新增 `MD_4449`、`POS_CATEGORY_4449`（15 个词性标签 → 14 类）、
+  `parse_words_4449()`（复用 PAGE_RE / ROW_RE / APPENDIX_RE，校验 1–4449 连续 + 223 页），
+  build() 第 3 步生成 words-4449.json，清单加第三条（hasSections=false / spellingEnabled=true / order=3）。
+- `public/data/books/words-4449.json`：4449 词 / 223 页 / 14 类；每词含
+  id/number/word/meaning/category/collectionId/collectionTitle；无音标、无例句。
+- `catalog.json` 与 `phrases-764.json` 与改造前字节一致（git diff 为空）。
+- `init.sh`：四文件幂等校验（`catalog.json` / `phrases-764.json` / `words-4449.json` / `index.json`），
+  提示语同步为「四份词书数据一致」。
+
+### 验证证据
+- `node scripts/check_books_ui.mjs`：**61/61 通过**（原 44 项 + 新增 17 项）。
+  新项覆盖：弹框三本 / 切第三本 / localStorage 记住 / 软重启回首页 / 词典库 223 页 4449 条 /
+  分类「全部词性」含「名词」/ 释义无兼容字符与 `<br>` 字面量 / 沉浸学习分号合并释义且无音标例句 /
+  学习写入独立书桶 / 记忆卡无例句 / 拼写题恢复 / 首页隐藏长期路径 / 进度隔离 / v2 迁移 / 暗色移动端 / 无 JS 异常。
+  截图：`shots/book-picker/05b-4449-library.png`、`05c-4449-study.png`（另 `01-first-visit.png` 复核三书卡片风格）。
+- `node scripts/check_migration.mjs`：6/6 通过（分桶逻辑未动，回归确认）。
+- `CODEBUDDY_SAFE_DELETE_BULK_THRESHOLD=2000 ./init.sh`：全门禁通过，四文件幂等 + build + out/ 重导出。
+- 截图人工复核：第三本书卡沿用 `.journal-card` 玻璃底、`badge` pink-soft 徽章、`.path-bar`、`.pill` CTA，
+  与第一本风格对称，无彩色左边框或高饱和块。
+
+### 本次会话修改的文件
+- 新增：`docs/2027专升本英语你还在背单词吗.md`、`public/data/books/words-4449.json`
+- 修改：`scripts/build_books.py`、`scripts/check_books_ui.mjs`、`init.sh`、
+  `public/data/books/index.json`、`feature_list.json`、`progress.md`、`README.md`、`AGENTS.md`、`session-handoff.md`
+- 生成：`out/` 重新静态导出；截图 `shots/book-picker/05b、05c`
+- 未改：`components/BloomApp.jsx`（清单驱动，前端零改动）、`components/userStorage.mjs`、
+  `app/globals.css`、`catalog.json`、`phrases-764.json`

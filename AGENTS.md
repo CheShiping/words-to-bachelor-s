@@ -19,8 +19,9 @@
 - `app/` —— App Router 页面外壳与全局 CSS（纯 CSS 设计系统：暖粉和风 + 夜樱）
 - `public/data/catalog.json` —— 3500 词书（3,289 词），`scripts/build_catalog.py` 生成
 - `public/data/books/phrases-764.json` —— 真题核心词组书（764 条 / 39 页）
+- `public/data/books/words-4449.json` —— 你还在背单词吗（4449 词 / 223 页）
 - `public/data/books/index.json` —— **词书清单，加新词书的唯一扩展点**（元信息 + 能力开关 + dataUrl）
-- `scripts/build_books.py` —— 多词书统一构建管线（复用 build_catalog.py + 解析词组表 + 生成清单）
+- `scripts/build_books.py` —— 多词书统一构建管线（复用 build_catalog.py + 解析词组表 / 4449 词表 + 生成清单）
 - `out/` —— `npm run build` 的静态导出产物（部署对象，不要手改）
 - `shots/` —— 截图存档；`.workbuddy/memory/` —— 项目长期约定
 
@@ -72,11 +73,11 @@
 ## 验证命令
 
 ```bash
-./init.sh        # 完整验证：依赖 + 三份词书数据一致性 + 构建产物检查（推荐）
+./init.sh        # 完整验证：依赖 + 四份词书数据一致性 + 构建产物检查（推荐）
 npm run build    # 最低门槛：静态导出必须成功
-npm run catalog  # 改 docs/ 词表或 build_books.py 后，重建 catalog.json + 词组书 + 清单
+npm run catalog  # 改 docs/ 词表或 build_books.py 后，重建 catalog.json + 词组书 + 4449 词书 + 清单
 node scripts/check_migration.mjs  # 改动 components/userStorage.mjs 后必跑（6 组断言）
-node scripts/check_books_ui.mjs   # 改动选书弹框/词书加载后跑（44 项 CDP 断言，需本机 Chrome + 8773 静态预览）
+node scripts/check_books_ui.mjs   # 改动选书弹框/词书加载后跑（61 项 CDP 断言，需本机 Chrome + 8773 静态预览）
 node scripts/check_flash_mastered.mjs  # 改动记忆卡片状态按钮后跑（30 项 CDP 断言，脚本自带静态预览）
 ```
 

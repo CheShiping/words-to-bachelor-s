@@ -8,6 +8,7 @@
 
     catalog.json                 3500 词书（复用 build_catalog.py 的解析逻辑，保持字节一致）
     books/phrases-764.json       专升本真题核心词组（764 条）
+    books/words-4449.json        你还在背单词吗（4449 词）
     books/index.json             词书清单（前端只先取这份，再按选择拉对应词书）
 
 以后新增词书：写一个 parse_xxx()，在 build() 里追加一个 JSON 与一条清单记录即可。
@@ -25,6 +26,7 @@ from build_catalog import build as build_words_3500  # noqa: E402
 
 MD_3500 = os.path.join(ROOT, "docs", "2027专升本零基础3500词汇.md")
 MD_PHRASES = os.path.join(ROOT, "docs", "专升本真题核心词组.md")
+MD_4449 = os.path.join(ROOT, "docs", "2027专升本英语你还在背单词吗.md")
 
 PAGE_RE = re.compile(r"^##\s+第\s*(\d+)\s*页\s*·\s*(\d+)\s*[–\-—]\s*(\d+)\s*$")
 ROW_RE = re.compile(r"^\|\s*(\d+)\s*\|")
@@ -135,6 +137,98 @@ def parse_phrases(md_path):
     return collections, words
 
 
+# 4449 词书首条释义的词性标签 → 词典库分类
+POS_CATEGORY_4449 = {
+    "n": "名词",
+    "v": "动词", "vt": "动词", "vi": "动词",
+    "a": "形容词", "adj": "形容词",
+    "ad": "副词", "adv": "副词",
+    "prep": "介词", "pron": "代词", "det": "限定词",
+    "num": "数词", "ord": "序数词",
+    "conj": "连词", "int": "感叹词",
+    "modal": "情态动词", "vlink": "系动词",
+    "aux": "助动词", "art": "冠词", "abbr": "缩略词",
+    "usage": "用法", "suff": "后缀", "pref": "前缀",
+}
+
+
+def parse_words_4449(md_path):
+    """解析 3 列表格：# / Word / Meaning。附录 A 之后一律不读。
+
+    与词组书共用 PAGE_RE / ROW_RE / APPENDIX_RE；每条 Meaning 的多义项用 <br> 分行，
+    数据层合并成中文分号（与词组书一致，避免把 HTML 带进界面）。首条释义的词性
+    标签派生 category；该书原版无音标、无例句，故不写 phonetic / exampleEn。"""
+    with io.open(md_path, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+
+    collections = []
+    words = []
+    page = None
+    seen = set()
+
+    for line_no, raw in enumerate(lines, 1):
+        line = raw.strip()
+        if APPENDIX_RE.match(line):
+            break
+        m = PAGE_RE.match(line)
+        if m:
+            number = int(m.group(1))
+            first, last = int(m.group(2)), int(m.group(3))
+            page = {
+                "id": "page-%02d" % number,
+                "title": line[3:].strip(),
+                "sortOrder": len(collections),
+                "wordCount": 0,
+                "range": [first, last],
+            }
+            collections.append(page)
+            continue
+        if not ROW_RE.match(line):
+            continue
+
+        parts = line.split("|")
+        if len(parts) != 5:
+            raise SystemExit("第 %d 行：4449 词表列数异常（%d 段）: %s" % (line_no, len(parts), line[:120]))
+        number = int(parts[1].strip())
+        word = tidy(parts[2])
+        meaning_raw = parts[3].strip()
+
+        if number in seen:
+            raise SystemExit("第 %d 行：编号 %d 重复" % (line_no, number))
+        seen.add(number)
+        if page is None:
+            raise SystemExit("第 %d 行：词条出现在任何页标题之前" % line_no)
+        if not word or not meaning_raw:
+            raise SystemExit("第 %d 行：Word / Meaning 有空列" % line_no)
+
+        senses = [tidy(part) for part in meaning_raw.split("<br>") if tidy(part)]
+        meaning = "；".join(senses)
+        if not meaning:
+            raise SystemExit("第 %d 行：释义解析后为空" % line_no)
+
+        first_tag = TAG_RE.match(senses[0])
+        category = POS_CATEGORY_4449.get(first_tag.group(1), "其他") if first_tag else "其他"
+
+        words.append({
+            "id": number,
+            "number": number,
+            "word": word,
+            "meaning": meaning,
+            "category": category,
+            "collectionId": page["id"],
+            "collectionTitle": page["title"],
+        })
+        page["wordCount"] += 1
+
+    expected = list(range(1, 4450))
+    if [w["number"] for w in words] != expected:
+        missing = [n for n in expected if n not in seen]
+        raise SystemExit("4449 词编号不连续，缺失: %s" % missing[:20])
+    if len(collections) != 223:
+        raise SystemExit("页分节数应为 223，实际 %d" % len(collections))
+    return collections, words
+
+
 def write_json(path, data):
     out_dir = os.path.dirname(os.path.abspath(path))
     if out_dir and not os.path.isdir(out_dir):
@@ -152,6 +246,7 @@ def build(out_root):
     out_root = os.path.abspath(out_root)
     catalog_path = os.path.join(out_root, "catalog.json")
     phrases_path = os.path.join(out_root, "books", "phrases-764.json")
+    words_4449_path = os.path.join(out_root, "books", "words-4449.json")
     index_path = os.path.join(out_root, "books", "index.json")
 
     # 1) 3500 词书：沿用原解析器，保证与既有 catalog.json 完全一致
@@ -168,7 +263,17 @@ def build(out_root):
         "words": words,
     })
 
-    # 3) 词书清单（前端唯一入口，元信息由这里统一提供）
+    # 3) 你还在背单词吗（4449 词）
+    collections_4449, words_4449 = parse_words_4449(MD_4449)
+    write_json(words_4449_path, {
+        "catalogIdVersion": 2,
+        "bookId": "words-4449",
+        "source": os.path.basename(MD_4449),
+        "collections": collections_4449,
+        "words": words_4449,
+    })
+
+    # 4) 词书清单（前端唯一入口，元信息由这里统一提供）
     index = {
         "manifestVersion": 1,
         "defaultBookId": "words-3500",
@@ -203,6 +308,21 @@ def build(out_root):
                 "accent": "gold",
                 "order": 2,
             },
+            {
+                "id": "words-4449",
+                "name": "2027 专升本英语 你还在背单词吗",
+                "shortName": "4449 词",
+                "subtitle": "一页一默写的高频词",
+                "description": "按原书 223 页分节，4449 个高频词；含词性与多条释义，边听边默写。",
+                "dataUrl": "/data/books/words-4449.json",
+                "wordCount": len(words_4449),
+                "collectionCount": len(collections_4449),
+                "hasSections": False,
+                "spellingEnabled": True,
+                "categoryLabel": "全部词性",
+                "accent": "pink",
+                "order": 3,
+            },
         ],
     }
     write_json(index_path, index)
@@ -211,6 +331,10 @@ def build(out_root):
     for w in words:
         cats[w["category"]] = cats.get(w["category"], 0) + 1
     print("phrases: pages=%d words=%d categories=%s" % (len(collections), len(words), sorted(cats.items(), key=lambda kv: -kv[1])))
+    cats_4449 = {}
+    for w in words_4449:
+        cats_4449[w["category"]] = cats_4449.get(w["category"], 0) + 1
+    print("words-4449: pages=%d words=%d categories=%s" % (len(collections_4449), len(words_4449), sorted(cats_4449.items(), key=lambda kv: -kv[1])))
     print("manifest: %s" % ", ".join("%s(%d)" % (b["id"], b["wordCount"]) for b in index["books"]))
     print("output: %s" % out_root)
 

@@ -119,6 +119,14 @@
       "dependencies": ["feat-004", "feat-009"],
       "status": "done",
       "evidence": "浏览器 CDP 回归 30/30 通过（按钮三态 / 写入 mastered 并清复习排期 / 待复习池出队与索引收敛 / 空状态 / 刷新持久化 / 首页统计 / 暗色与移动端 / 无 JS 异常），截图见 shots/flash-mastered/；./init.sh 完整门禁通过，out/ 已重新导出"
+    },
+    {
+      "id": "feat-016",
+      "name": "《你还在背单词吗》4449 词书接入",
+      "description": "把 docs/2027专升本英语 你还在背单词吗.pdf（223 页 / 4449 词）转成 docs/2027专升本英语你还在背单词吗.md（按原书页分节 + 附录 A 用字对照 137 个兼容字符 + 附录 B 逐页原文备份）；build_books.py 新增 parse_words_4449() 生成 public/data/books/words-4449.json（每词含词性派生分类，无音标/例句），清单加第三条记录（hasSections=false、spellingEnabled=true）；init.sh 扩展为四文件幂等校验；check_books_ui.mjs 扩展为三书 61 项断言",
+      "dependencies": ["feat-012", "feat-013"],
+      "status": "done",
+      "evidence": "PDF txt + structure 双路交叉校验：223 页 / 4449 词 / 编号 1–4449 连续 / 两栏词-义一一对应 0 异常；npm run catalog 生成 words-4449.json（4449 词 / 223 页 / 14 类，catalog.json 与 phrases-764.json 字节不变）；node scripts/check_books_ui.mjs 61/61 通过（三书弹框 / 切书软重启 / 223 页 4449 条 / 词性筛选 / 部首字符已规范化 / 拼写题恢复 / 进度分桶独立 / v2 迁移 / 暗色移动端 / 无 JS 异常），截图见 shots/book-picker/05b、05c；node scripts/check_migration.mjs 6/6；CODEBUDDY_SAFE_DELETE_BULK_THRESHOLD=2000 ./init.sh 全门禁通过，out/ 已重新导出"
     }
   ]
 }

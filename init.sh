@@ -18,7 +18,7 @@ if command -v python >/dev/null 2>&1; then
   rm -rf "$TMP_DIR" 2>/dev/null || true
   python scripts/build_books.py "$TMP_DIR" >/dev/null
   VERIFY_OK=1
-  for rel in "catalog.json" "books/phrases-764.json" "books/index.json"; do
+  for rel in "catalog.json" "books/phrases-764.json" "books/words-4449.json" "books/index.json"; do
     if ! diff -q "$TMP_DIR/$rel" "public/data/$rel" >/dev/null 2>&1; then
       echo "验证失败：public/data/$rel 与重新生成结果不一致。"
       VERIFY_OK=0
@@ -29,7 +29,7 @@ if command -v python >/dev/null 2>&1; then
     echo "          若属预期（词表或解析器有变更），请运行 npm run catalog 更新仓库内数据。"
     exit 1
   fi
-  echo "三份词书数据一致。"
+  echo "四份词书数据一致。"
 else
   echo "警告：未找到 python，跳过词库一致性检查（构建不受影响）。"
 fi
