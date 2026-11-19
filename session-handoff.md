@@ -4,7 +4,7 @@
 
 - 目标：词间日和已上线（https://cheshiping.github.io/words-to-bachelor-s/），当前无进行中功能；新需求进来时先追加到 `feature_list.json`
 - 当前状态：核心功能 + 多词书 + 记忆卡片一键掌握 + 第三本词书全部完成（feat-001 ~ feat-016 全 done）
-- 分支 / 提交：`main`，feat-016（第三本词书）待提交；基线 `07b9b89`（docs 同步）
+- 分支 / 提交：`main` @ `3866b2a` 已推送 `origin/main`，GitHub Actions 自动发布；feat-016 = `13088df`，规范固化 = `3866b2a`
 
 ## 本次会话已完成
 
@@ -30,8 +30,9 @@
 
 - 新增：`docs/2027专升本英语你还在背单词吗.md`、`public/data/books/words-4449.json`
 - 修改：`scripts/build_books.py`、`scripts/check_books_ui.mjs`、`init.sh`、`public/data/books/index.json`
-- 修改：`AGENTS.md`、`feature_list.json`、`progress.md`、`session-handoff.md`、`README.md`
+- 修改：`AGENTS.md`（含「完成即推送」规范）、`feature_list.json`、`progress.md`、`session-handoff.md`、`README.md`
 - 生成：`out/` 重新导出、`shots/book-picker/05b、05c` 截图
+- 已推送：`13088df`（feat-016）+ `3866b2a`（规范）→ `origin/main`
 - 未改：`components/BloomApp.jsx`（清单驱动，前端零改动）、`components/userStorage.mjs`、`app/globals.css`
 
 ## 已做出的决策
