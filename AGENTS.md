@@ -19,7 +19,7 @@
 - `app/` —— App Router 页面外壳与全局 CSS（纯 CSS 设计系统：暖粉和风 + 夜樱）
 - `public/data/catalog.json` —— 3500 词书（3,289 词），`scripts/build_catalog.py` 生成
 - `public/data/books/phrases-764.json` —— 真题核心词组书（764 条 / 39 页）
-- `public/data/books/words-4449.json` —— 你还在背单词吗（4449 词 / 223 页）
+- `public/data/books/words-4449.json` —— 你还在背单词吗（4449 词 / 每 200 词一组，共 23 组）
 - `public/data/books/index.json` —— **词书清单，加新词书的唯一扩展点**（元信息 + 能力开关 + dataUrl）
 - `scripts/build_books.py` —— 多词书统一构建管线（复用 build_catalog.py + 解析词组表 / 4449 词表 + 生成清单）
 - `out/` —— `npm run build` 的静态导出产物（部署对象，不要手改）

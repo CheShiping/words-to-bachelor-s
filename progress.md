@@ -3,7 +3,7 @@
 ## 当前状态
 
 **最后更新：** 2026-11-19
-**当前功能：** 无进行中功能 —— feat-016「《你还在背单词吗》4449 词书接入」已交付并验证
+**当前功能：** 无进行中功能 —— feat-017「4449 词书改为每 200 词一组分节」已交付并验证
 
 ## 状态概览
 
@@ -22,6 +22,8 @@
 - [x] **《你还在背单词吗》4449 词书接入（feat-016）**：PDF → Markdown（223 页 / 附录 A 用字对照 / 附录 B 原文备份），
   `parse_words_4449()` 生成 words-4449.json（词性派生 14 类、无音标例句），清单第三条 + init.sh 四文件校验；
   前端零改动，三书 61/61 CDP 断言通过
+- [x] **4449 词书改为每 200 词一组分节（feat-017）**：正文按 23 组分节（22×200 + 49），
+  解析器用独立 GROUP_RE_4449，附录 B 保留逐页原文；三书 61/61 断言通过，out/ 已重导出
 
 ### 进行中
 
@@ -147,3 +149,32 @@
 - 生成：`out/` 重新静态导出；截图 `shots/book-picker/05b、05c`
 - 未改：`components/BloomApp.jsx`（清单驱动，前端零改动）、`components/userStorage.mjs`、
   `app/globals.css`、`catalog.json`、`phrases-764.json`
+
+## feat-017 会话（2026-11-19）
+
+### 目标
+用户要求把 4449 词书的词集分节从每页 20 个改为每 200 个一组（先说 100，后改为 200）。
+
+### 改动
+- `docs/2027专升本英语你还在背单词吗.md`：正文按每 200 词一组重写为 23 组
+  （22×200 + 末组 49，标题「第 N 组 · X–Y」），4449 条编号连续校验通过；
+  附录 A（用字对照）不动，附录 B 仍保留原书 223 页逐页原文备份（字符未改动）。
+- `scripts/build_books.py`：新增 `GROUP_RE_4449`（匹配「第 N 组」，与词组书 `PAGE_RE`「第 N 页」分开），
+  `parse_words_4449()` 改按组解析、collection id 用 `group-NN`，并校验 23 组 + 每组词数 `[200]*22+[49]`；
+  清单 description/subtitle 同步为「23 组 / 每 200 词」。
+- `public/data/books/words-4449.json`：23 个 collection，`collectionCount` 经清单反映为 23。
+- `scripts/check_books_ui.mjs`：断言由「223 页词集」改为「23 组词集」。
+- 文档：README / AGENTS.md / session-handoff.md / feature_list.json / 项目记忆同步；前端零改动。
+
+### 验证证据
+- `npm run catalog`：words-4449 pages=23 words=4449；catalog.json 与 phrases-764.json git diff 为空。
+- `node scripts/check_books_ui.mjs`：**61/61 通过**，词典库计数显示「共 23 组词集 · 筛选到 4449 个单词」，
+  词卡徽章显示「第 1 组 · 1–200」；截图 `shots/book-picker/05b、05c` 人工复核通过。
+- `CODEBUDDY_SAFE_DELETE_BULK_THRESHOLD=2000 ./init.sh`：四文件幂等 + build + out/ 重导出全通过。
+
+### 本次会话修改的文件
+- 修改：`docs/2027专升本英语你还在背单词吗.md`、`scripts/build_books.py`、
+  `scripts/check_books_ui.mjs`、`public/data/books/words-4449.json`、`public/data/books/index.json`、
+  `feature_list.json`、`progress.md`、`README.md`、`AGENTS.md`、`session-handoff.md`、项目记忆
+- 生成：`out/` 重新静态导出
+- 未改：前端源码（BloomApp.jsx / userStorage.mjs / globals.css）、其余两本词书数据

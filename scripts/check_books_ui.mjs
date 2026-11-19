@@ -196,7 +196,7 @@ check("词组书进度仍独立保留", Object.keys(s5?.books?.["phrases-764"]?.
 
 await go("library");
 const count4449 = await ev(`document.querySelector(".count")?.textContent`);
-check("词典库显示 223 页词集 / 4449 条", count4449?.includes("223") && count4449?.includes("4449"), count4449?.trim());
+check("词典库显示 23 组词集 / 4449 条", count4449?.includes("23 组") && count4449?.includes("4449"), count4449?.trim());
 check("4449 词书分类标签为「全部词性」", await ev(`document.querySelector('select[aria-label="按分类筛选"] option')?.textContent === "全部词性"`));
 check("分类项含词性派生值", await ev(`[...document.querySelectorAll('select[aria-label="按分类筛选"] option')].some(o => o.textContent === "名词")`));
 check("释义无残留兼容字符", await ev(`![...document.querySelectorAll(".word-card .meaning")].some(e => /[\\u2E80-\\u2FFF]/.test(e.textContent))`));
