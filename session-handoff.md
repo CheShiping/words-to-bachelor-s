@@ -36,7 +36,7 @@
 - 修改：`scripts/build_books.py`、`scripts/check_books_ui.mjs`、`init.sh`、`public/data/books/index.json`
 - 修改：`AGENTS.md`（含「完成即推送」规范）、`feature_list.json`、`progress.md`、`session-handoff.md`、`README.md`
 - 生成：`out/` 重新导出、`shots/book-picker/05b、05c` 截图
-- 已推送：`13088df`（feat-016）+ `3866b2a`（规范）+ `9150018`（文档）→ `origin/main`；feat-017 待推送
+- 已推送：`13088df`（feat-016）+ `3866b2a`（规范）+ `9150018`（文档）+ `51c8fc3`（feat-017）→ `origin/main`，本地与远端已同步
 - 未改：`components/BloomApp.jsx`（清单驱动，前端零改动）、`components/userStorage.mjs`、`app/globals.css`
 
 ## 已做出的决策
