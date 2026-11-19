@@ -60,6 +60,10 @@
 - **必须验证**：未运行验证命令前，不得声称完成
 - **更新产物**：会话结束前更新 `progress.md` 与 `feature_list.json`
 - **保持范围**：不修改与当前功能无关的文件
+- **完成即推送（用户明确要求）**：每次功能做完、门禁通过后，直接 `git commit` 并 `git push origin main`，
+  无需再询问用户是否推送。推送后 GitHub Actions 自动发布，不用手动部署、不用额外确认。
+  只提交本次功能相关文件；仓库里既有的未跟踪文件（PDF、`DESIGN_SYSTEM.md`、历史诊断脚本等）保持原样，不顺手加入。
+  提交信息用简洁的 `feat: / fix: / docs:` 前缀，不要带多余符号。
 
 ## 完成定义
 
@@ -69,6 +73,7 @@
 - [ ] `./init.sh`（至少 `npm run build`）通过
 - [ ] 证据已写入 `feature_list.json` 或 `progress.md`
 - [ ] `out/` 已重新导出，仓库保持可重启状态
+- [ ] 已 `git commit` 并 `git push origin main`（用户要求完成即推送，不需再问）
 
 ## 验证命令
 
